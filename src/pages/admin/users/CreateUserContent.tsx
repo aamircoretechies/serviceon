@@ -23,7 +23,7 @@ const CreateUserContent = () => {
     lastName: '',
     email: '',
     phone: '',
-    role: 'technician',
+    role: 'mechanic',
     status: 'active',
     assignedGarages: [] as string[],
     sendWelcomeEmail: true,
@@ -65,7 +65,7 @@ const CreateUserContent = () => {
     switch (role) {
       case 'admin':
         return 'Full access to all system features and settings';
-      case 'technician':
+      case 'mechanic':
         return 'Access to service management and customer tools';
       case 'customer':
         return 'Limited access to view their own service history';
@@ -180,10 +180,10 @@ const CreateUserContent = () => {
                             Admin
                           </div>
                         </SelectItem>
-                        <SelectItem value="technician">
+                        <SelectItem value="mechanic">
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4 text-blue-600" />
-                            Technician
+                            Mechanic
                           </div>
                         </SelectItem>
                         <SelectItem value="customer">

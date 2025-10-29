@@ -13,7 +13,9 @@ import {
   Phone,
   Shield,
   UserCheck,
-  UserX
+  UserX,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,11 +43,29 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ConfirmationDialog } from './ConfirmationDialog';
+import { RolePermissionsMatrix } from './RolePermissionsMatrix';
+import { toast } from 'sonner';
 
 const UsersListContent = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [confirmationDialog, setConfirmationDialog] = useState<{
+    open: boolean;
+    type: 'delete' | 'disable' | 'enable';
+    userId: number;
+    userName: string;
+  }>({
+    open: false,
+    type: 'delete',
+    userId: 0,
+    userName: ''
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPermissionsMatrix, setShowPermissionsMatrix] = useState(false);
 
   // Mock data - replace with actual data
   const users = [
@@ -65,7 +85,7 @@ const UsersListContent = () => {
       name: 'Sarah Johnson',
       email: 'sarah.johnson@serviceon.com',
       phone: '(555) 234-5678',
-      role: 'technician',
+      role: 'mechanic',
       status: 'active',
       lastLogin: '2024-01-19 2:15 PM',
       createdAt: '2024-01-10',
@@ -76,7 +96,7 @@ const UsersListContent = () => {
       name: 'Mike Wilson',
       email: 'mike.wilson@serviceon.com',
       phone: '(555) 345-6789',
-      role: 'technician',
+      role: 'mechanic',
       status: 'inactive',
       lastLogin: '2024-01-15 9:45 AM',
       createdAt: '2024-01-08',
@@ -103,12 +123,18 @@ const UsersListContent = () => {
     return matchesSearch && matchesRole && matchesStatus;
   });
 
+  // Pagination
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+
   const getRoleBadge = (role: string) => {
     switch (role) {
       case 'admin':
         return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 sand-hover-badge">Admin</Badge>;
-      case 'technician':
-        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 sand-hover-badge">Technician</Badge>;
+      case 'mechanic':
+        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 sand-hover-badge">Mechanic</Badge>;
       case 'customer':
         return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 sand-hover-badge">Customer</Badge>;
       default:
@@ -131,7 +157,7 @@ const UsersListContent = () => {
     switch (role) {
       case 'admin':
         return <Shield className="h-4 w-4 text-red-600" />;
-      case 'technician':
+      case 'mechanic':
         return <User className="h-4 w-4 text-blue-600" />;
       case 'customer':
         return <UserCheck className="h-4 w-4 text-green-600" />;
@@ -141,23 +167,76 @@ const UsersListContent = () => {
   };
 
   const handleEdit = (userId: number) => {
-    console.log('Edit user:', userId);
+    // Navigate to edit user page
+    window.location.href = `/admin/users/edit/${userId}`;
   };
 
   const handleDelete = (userId: number) => {
-    console.log('Delete user:', userId);
+    const user = users.find(u => u.id === userId);
+    if (user) {
+      setConfirmationDialog({
+        open: true,
+        type: 'delete',
+        userId,
+        userName: user.name
+      });
+    }
   };
 
   const handleView = (userId: number) => {
-    console.log('View user:', userId);
+    // Navigate to user detail page
+    window.location.href = `/admin/users/${userId}`;
   };
 
   const handleToggleStatus = (userId: number, currentStatus: string) => {
-    console.log('Toggle user status:', userId, currentStatus);
+    const user = users.find(u => u.id === userId);
+    if (user) {
+      setConfirmationDialog({
+        open: true,
+        type: currentStatus === 'active' ? 'disable' : 'enable',
+        userId,
+        userName: user.name
+      });
+    }
   };
 
   const handleResetPassword = (userId: number) => {
-    console.log('Reset password for user:', userId);
+    setIsLoading(true);
+    // Simulate API call
+    setTimeout(() => {
+      setIsLoading(false);
+      toast.success('Password reset email sent successfully');
+    }, 1000);
+  };
+
+  const handleConfirmAction = async () => {
+    setIsLoading(true);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      switch (confirmationDialog.type) {
+        case 'delete':
+          toast.success('User deleted successfully');
+          break;
+        case 'disable':
+          toast.success('User disabled successfully');
+          break;
+        case 'enable':
+          toast.success('User enabled successfully');
+          break;
+      }
+      
+      setConfirmationDialog({ open: false, type: 'delete', userId: 0, userName: '' });
+    } catch (error) {
+      toast.error('An error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   return (
@@ -203,7 +282,7 @@ const UsersListContent = () => {
                   <SelectContent>
                     <SelectItem value="all">All Roles</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="technician">Technician</SelectItem>
+                    <SelectItem value="mechanic">Mechanic</SelectItem>
                     <SelectItem value="customer">Customer</SelectItem>
                   </SelectContent>
                 </Select>
@@ -229,7 +308,17 @@ const UsersListContent = () => {
         {/* Users Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Users ({filteredUsers.length})</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Users ({filteredUsers.length})</CardTitle>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowPermissionsMatrix(!showPermissionsMatrix)}
+              >
+                <Shield className="h-4 w-4 mr-2" />
+                {showPermissionsMatrix ? 'Hide' : 'Show'} Permissions Matrix
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -245,7 +334,7 @@ const UsersListContent = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUsers.map((user) => (
+                  {paginatedUsers.map((user) => (
                     <TableRow key={user.id} className="sand-hover-row">
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -338,7 +427,70 @@ const UsersListContent = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <Card>
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-500">
+                  Showing {startIndex + 1} to {Math.min(endIndex, filteredUsers.length)} of {filteredUsers.length} users
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handlePageChange(page)}
+                        className="w-8 h-8 p-0"
+                      >
+                        {page}
+                      </Button>
+                    ))}
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Role Permissions Matrix */}
+        {showPermissionsMatrix && (
+          <RolePermissionsMatrix />
+        )}
       </div>
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        open={confirmationDialog.open}
+        onOpenChange={(open) => setConfirmationDialog(prev => ({ ...prev, open }))}
+        type={confirmationDialog.type}
+        userName={confirmationDialog.userName}
+        onConfirm={handleConfirmAction}
+        isLoading={isLoading}
+      />
     </Fragment>
   );
 };

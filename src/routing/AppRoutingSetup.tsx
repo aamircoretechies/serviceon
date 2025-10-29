@@ -5,7 +5,11 @@ import {
   AdminDashboardPage,
   GaragesListPage,
   CreateGaragePage,
+  JobsListPage,
+  CreateJobPage,
+  JobDetailsPage,
   BrandingSettingsPage,
+  BrandingOutputPage,
   ChecklistConfigPage,
   LaborRatesPage,
   UsersListPage,
@@ -13,6 +17,24 @@ import {
   ActivityLogPage,
   AdminAuthPage
 } from '@/pages/admin';
+import { 
+  ReminderTemplatesPage,
+  CreateReminderTemplatePage,
+  ScheduledRemindersPage
+} from '@/pages/admin/reminders';
+import { 
+  VehicleHistoryPage,
+  VehicleDetailPage
+} from '@/pages/admin/vehicles';
+import { 
+  MediaLibraryPage
+} from '@/pages/admin/media';
+import { 
+  PDFConfigurationPage
+} from '@/pages/admin/pdf';
+import { 
+  SystemSettingsPage
+} from '@/pages/admin/system';
 import {
   ProfileActivityPage,
   ProfileBloggerPage,
@@ -88,7 +110,6 @@ import {
 import { AuthPage } from '@/auth';
 import { RequireAuth } from '@/auth/RequireAuth';
 import { Demo1Layout } from '@/layouts/demo1';
-import { AdminLayout } from '@/layouts/admin';
 import { ErrorsRouting } from '@/errors';
 import {
   AuthenticationWelcomeMessagePage,
@@ -206,12 +227,24 @@ const AppRoutingSetup = (): ReactElement => {
         <Route element={<Demo1Layout />}>
           <Route path="/admin/garages" element={<GaragesListPage />} />
           <Route path="/admin/garages/create" element={<CreateGaragePage />} />
+          <Route path="/admin/jobs" element={<JobsListPage />} />
+          <Route path="/admin/jobs/create" element={<CreateJobPage />} />
+          <Route path="/admin/jobs/:id" element={<JobDetailsPage />} />
           <Route path="/admin/branding" element={<BrandingSettingsPage />} />
+          <Route path="/admin/branding/output" element={<BrandingOutputPage />} />
           <Route path="/admin/checklist" element={<ChecklistConfigPage />} />
           <Route path="/admin/labor-rates" element={<LaborRatesPage />} />
           <Route path="/admin/users" element={<UsersListPage />} />
           <Route path="/admin/users/create" element={<CreateUserPage />} />
           <Route path="/admin/activity" element={<ActivityLogPage />} />
+          <Route path="/admin/reminders/templates" element={<ReminderTemplatesPage />} />
+          <Route path="/admin/reminders/templates/create" element={<CreateReminderTemplatePage />} />
+          <Route path="/admin/reminders/scheduled" element={<ScheduledRemindersPage />} />
+          <Route path="/admin/vehicles" element={<VehicleHistoryPage />} />
+          <Route path="/admin/vehicles/:id" element={<VehicleDetailPage />} />
+          <Route path="/admin/media" element={<MediaLibraryPage />} />
+          <Route path="/admin/pdf-config" element={<PDFConfigurationPage />} />
+          <Route path="/admin/system" element={<SystemSettingsPage />} />
         </Route>
       </Route>
       

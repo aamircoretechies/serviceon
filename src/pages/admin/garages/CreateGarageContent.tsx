@@ -1,6 +1,6 @@
 import { Fragment, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, X } from 'lucide-react';
+import { ArrowLeft, Upload, X, Palette, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,8 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { BrandingPreviewModal } from './BrandingPreviewModal';
+import { toast } from 'sonner';
 
 const CreateGarageContent = () => {
   const navigate = useNavigate();
@@ -29,10 +31,14 @@ const CreateGarageContent = () => {
     timezone: 'America/New_York',
     status: 'active',
     description: '',
-    logo: null as File | null
+    logo: null as File | null,
+    brandColor: '#3B82F6'
   });
 
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [showBrandingPreview, setShowBrandingPreview] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<{[key: string]: string}>({});
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -66,11 +72,57 @@ const CreateGarageContent = () => {
     setLogoPreview(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validateForm = () => {
+    const newErrors: {[key: string]: string} = {};
+    
+    if (!formData.name.trim()) {
+      newErrors.name = 'Garage name is required';
+    }
+    if (!formData.address.trim()) {
+      newErrors.address = 'Address is required';
+    }
+    if (!formData.city.trim()) {
+      newErrors.city = 'City is required';
+    }
+    if (!formData.state.trim()) {
+      newErrors.state = 'State is required';
+    }
+    if (!formData.zipCode.trim()) {
+      newErrors.zipCode = 'ZIP code is required';
+    }
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Phone number is required';
+    }
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Creating garage:', formData);
-    // Implement garage creation logic
-    navigate('/admin/garages');
+    
+    if (!validateForm()) {
+      toast.error('Please fix the errors below');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('Creating garage:', formData);
+      toast.success('Garage created successfully!');
+      navigate('/admin/garages');
+    } catch (error) {
+      toast.error('Failed to create garage. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const timezones = [
@@ -122,7 +174,9 @@ const CreateGarageContent = () => {
                         onChange={(e) => handleInputChange('name', e.target.value)}
                         placeholder="Enter garage name"
                         required
+                        className={errors.name ? 'border-red-500' : ''}
                       />
+                      {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="phone">Phone Number *</Label>
@@ -133,7 +187,9 @@ const CreateGarageContent = () => {
                         onChange={(e) => handleInputChange('phone', e.target.value)}
                         placeholder="(555) 123-4567"
                         required
+                        className={errors.phone ? 'border-red-500' : ''}
                       />
+                      {errors.phone && <p className="text-sm text-red-500">{errors.phone}</p>}
                     </div>
                   </div>
 
@@ -146,7 +202,9 @@ const CreateGarageContent = () => {
                       onChange={(e) => handleInputChange('email', e.target.value)}
                       placeholder="contact@garage.com"
                       required
+                      className={errors.email ? 'border-red-500' : ''}
                     />
+                    {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
                   </div>
 
                   <div className="space-y-2">
@@ -176,7 +234,9 @@ const CreateGarageContent = () => {
                       onChange={(e) => handleInputChange('address', e.target.value)}
                       placeholder="123 Main Street"
                       required
+                      className={errors.address ? 'border-red-500' : ''}
                     />
+                    {errors.address && <p className="text-sm text-red-500">{errors.address}</p>}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -188,7 +248,9 @@ const CreateGarageContent = () => {
                         onChange={(e) => handleInputChange('city', e.target.value)}
                         placeholder="City"
                         required
+                        className={errors.city ? 'border-red-500' : ''}
                       />
+                      {errors.city && <p className="text-sm text-red-500">{errors.city}</p>}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="state">State *</Label>
@@ -198,7 +260,9 @@ const CreateGarageContent = () => {
                         onChange={(e) => handleInputChange('state', e.target.value)}
                         placeholder="State"
                         required
+                        className={errors.state ? 'border-red-500' : ''}
                       />
+                      {errors.state && <p className="text-sm text-red-500">{errors.state}</p>}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="zipCode">ZIP Code *</Label>
@@ -208,7 +272,9 @@ const CreateGarageContent = () => {
                         onChange={(e) => handleInputChange('zipCode', e.target.value)}
                         placeholder="12345"
                         required
+                        className={errors.zipCode ? 'border-red-500' : ''}
                       />
+                      {errors.zipCode && <p className="text-sm text-red-500">{errors.zipCode}</p>}
                     </div>
                   </div>
                 </CardContent>
@@ -256,6 +322,39 @@ const CreateGarageContent = () => {
                         {formData.status === 'active' ? 'Active' : 'Inactive'}
                       </Badge>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Branding Settings */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Palette className="h-5 w-5" />
+                    Branding Settings
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="brandColor">Brand Color</Label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        id="brandColor"
+                        value={formData.brandColor}
+                        onChange={(e) => handleInputChange('brandColor', e.target.value)}
+                        className="w-12 h-10 rounded border border-gray-300 cursor-pointer"
+                      />
+                      <Input
+                        value={formData.brandColor}
+                        onChange={(e) => handleInputChange('brandColor', e.target.value)}
+                        placeholder="#3B82F6"
+                        className="font-mono"
+                      />
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      This color will be used across all branded materials and digital outputs.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -322,7 +421,17 @@ const CreateGarageContent = () => {
               {/* Branding Preview */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Branding Preview</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Branding Preview</CardTitle>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowBrandingPreview(true)}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Full Preview
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
@@ -347,6 +456,15 @@ const CreateGarageContent = () => {
                         </div>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div 
+                        className="w-4 h-4 rounded border"
+                        style={{ backgroundColor: formData.brandColor }}
+                      ></div>
+                      <span className="text-xs text-gray-500 font-mono">
+                        {formData.brandColor}
+                      </span>
+                    </div>
                     <p className="text-xs text-gray-500">
                       This is how the branding will appear on intake forms and other outputs.
                     </p>
@@ -365,12 +483,27 @@ const CreateGarageContent = () => {
             >
               Cancel
             </Button>
-            <Button type="submit">
-              Create Garage
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Creating...' : 'Create Garage'}
             </Button>
           </div>
         </form>
       </div>
+
+      {/* Branding Preview Modal */}
+      <BrandingPreviewModal
+        open={showBrandingPreview}
+        onOpenChange={setShowBrandingPreview}
+        garageData={{
+          name: formData.name || 'Garage Name',
+          address: formData.address || 'Address',
+          phone: formData.phone || 'Phone',
+          email: formData.email || 'Email',
+          timezone: formData.timezone,
+          logo: logoPreview || undefined,
+          brandColor: formData.brandColor
+        }}
+      />
     </Fragment>
   );
 };

@@ -79,7 +79,7 @@ const DropdownUser = ({ menuItemRef }: IDropdownUserProps) => {
               </MenuTitle>
             </MenuLink>
           </MenuItem>
-          <MenuItem
+         {/*  <MenuItem
             toggle="dropdown"
             trigger="hover"
             dropdownProps={{
@@ -124,7 +124,7 @@ const DropdownUser = ({ menuItemRef }: IDropdownUserProps) => {
               <MenuSeparator />
           
             </MenuSub>
-          </MenuItem>
+          </MenuItem> */}
        
           <MenuSeparator />
         </div>

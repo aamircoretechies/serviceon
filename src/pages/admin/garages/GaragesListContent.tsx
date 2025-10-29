@@ -11,7 +11,10 @@ import {
   Building2,
   MapPin,
   Phone,
-  Mail
+  Mail,
+  Clock,
+  Image as ImageIcon,
+  Eye as EyeIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,10 +41,31 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { BrandingPreviewModal } from './BrandingPreviewModal';
+import { ConfirmationDialog } from './ConfirmationDialog';
+import { toast } from 'sonner';
 
 const GaragesListContent = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [confirmationDialog, setConfirmationDialog] = useState<{
+    open: boolean;
+    garageId: number;
+    garageName: string;
+  }>({
+    open: false,
+    garageId: 0,
+    garageName: ''
+  });
+  const [brandingPreview, setBrandingPreview] = useState<{
+    open: boolean;
+    garageData: any;
+  }>({
+    open: false,
+    garageData: null
+  });
+  const [isLoading, setIsLoading] = useState(false);
 
   // Mock data - replace with actual data
   const garages = [
@@ -51,7 +75,10 @@ const GaragesListContent = () => {
       address: '123 Main St, Downtown',
       phone: '(555) 123-4567',
       email: 'info@downtownauto.com',
+      timezone: 'America/New_York',
       status: 'active',
+      logo: '/media/avatars/garage-1.png',
+      brandColor: '#3B82F6',
       createdAt: '2024-01-15',
       lastUpdated: '2024-01-20'
     },
@@ -61,7 +88,10 @@ const GaragesListContent = () => {
       address: '456 Oak Ave, Westside',
       phone: '(555) 234-5678',
       email: 'contact@westsidegarage.com',
+      timezone: 'America/Los_Angeles',
       status: 'active',
+      logo: '/media/avatars/garage-2.png',
+      brandColor: '#10B981',
       createdAt: '2024-01-10',
       lastUpdated: '2024-01-18'
     },
@@ -71,7 +101,10 @@ const GaragesListContent = () => {
       address: '789 Pine Rd, North Point',
       phone: '(555) 345-6789',
       email: 'hello@northpointmotors.com',
+      timezone: 'America/Chicago',
       status: 'inactive',
+      logo: null,
+      brandColor: '#F59E0B',
       createdAt: '2024-01-05',
       lastUpdated: '2024-01-12'
     },
@@ -81,7 +114,10 @@ const GaragesListContent = () => {
       address: '321 Elm St, East End',
       phone: '(555) 456-7890',
       email: 'service@eastendauto.com',
+      timezone: 'America/Denver',
       status: 'active',
+      logo: '/media/avatars/garage-3.png',
+      brandColor: '#EF4444',
       createdAt: '2024-01-08',
       lastUpdated: '2024-01-19'
     }
@@ -106,15 +142,47 @@ const GaragesListContent = () => {
   };
 
   const handleEdit = (garageId: number) => {
-    console.log('Edit garage:', garageId);
+    window.location.href = `/admin/garages/edit/${garageId}`;
   };
 
   const handleDelete = (garageId: number) => {
-    console.log('Delete garage:', garageId);
+    const garage = garages.find(g => g.id === garageId);
+    if (garage) {
+      setConfirmationDialog({
+        open: true,
+        garageId,
+        garageName: garage.name
+      });
+    }
   };
 
   const handleView = (garageId: number) => {
-    console.log('View garage:', garageId);
+    window.location.href = `/admin/garages/${garageId}`;
+  };
+
+  const handleBrandingPreview = (garage: any) => {
+    setBrandingPreview({
+      open: true,
+      garageData: garage
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    setIsLoading(true);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      toast.success('Garage deleted successfully');
+      setConfirmationDialog({ open: false, garageId: 0, garageName: '' });
+    } catch (error) {
+      toast.error('An error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatTimezone = (timezone: string) => {
+    return timezone.replace('America/', '').replace('_', ' ');
   };
 
   return (
@@ -182,12 +250,12 @@ const GaragesListContent = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
+                    <TableHead>Garage Name</TableHead>
                     <TableHead>Address</TableHead>
-                    <TableHead>Contact</TableHead>
+                    <TableHead>Timezone</TableHead>
+                    <TableHead>Logo</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Last Updated</TableHead>
-                    <TableHead className="w-12"></TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -211,48 +279,68 @@ const GaragesListContent = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <Phone className="h-3 w-3 text-gray-400" />
-                            <span className="text-sm">{garage.phone}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Mail className="h-3 w-3 text-gray-400" />
-                            <span className="text-sm">{garage.email}</span>
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-gray-400" />
+                          <span className="text-sm">{formatTimezone(garage.timezone)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {garage.logo ? (
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={garage.logo} alt="Garage Logo" />
+                              <AvatarFallback>
+                                <ImageIcon className="h-4 w-4" />
+                              </AvatarFallback>
+                            </Avatar>
+                          ) : (
+                            <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                              <ImageIcon className="h-4 w-4 text-gray-400" />
+                            </div>
+                          )}
+                          <span className="text-sm text-gray-500">
+                            {garage.logo ? 'Uploaded' : 'No Logo'}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
                         {getStatusBadge(garage.status)}
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-gray-500">{garage.lastUpdated}</span>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleView(garage.id)}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              View
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(garage.id)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleDelete(garage.id)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleBrandingPreview(garage)}
+                            title="Branding Preview"
+                          >
+                            <EyeIcon className="h-4 w-4" />
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleView(garage.id)}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                View
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEdit(garage.id)}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDelete(garage.id)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -262,6 +350,24 @@ const GaragesListContent = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Branding Preview Modal */}
+      {brandingPreview.garageData && (
+        <BrandingPreviewModal
+          open={brandingPreview.open}
+          onOpenChange={(open) => setBrandingPreview(prev => ({ ...prev, open }))}
+          garageData={brandingPreview.garageData}
+        />
+      )}
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        open={confirmationDialog.open}
+        onOpenChange={(open) => setConfirmationDialog(prev => ({ ...prev, open }))}
+        garageName={confirmationDialog.garageName}
+        onConfirm={handleConfirmDelete}
+        isLoading={isLoading}
+      />
     </Fragment>
   );
 };

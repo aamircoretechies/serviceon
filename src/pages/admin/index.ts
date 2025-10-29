@@ -1,6 +1,7 @@
 export { AdminDashboardPage, AdminDashboardContent } from './dashboard';
 export { GaragesListPage, GaragesListContent, CreateGaragePage, CreateGarageContent } from './garages';
-export { BrandingSettingsPage, BrandingSettingsContent } from './branding';
+export { JobsListPage, JobsListContent, JobDetailsDrawer, AssignMechanicDialog, CreateJobPage, CreateJobContent, JobDetailsPage, JobDetailsContent } from './jobs';
+export { BrandingSettingsPage, BrandingSettingsContent, BrandingOutputPage, BrandingOutputContent } from './branding';
 export { ChecklistConfigPage, ChecklistConfigContent } from './checklist';
 export { LaborRatesPage, LaborRatesContent } from './labor-rates';
 export { UsersListPage, UsersListContent, CreateUserPage, CreateUserContent } from './users';

@@ -7,6 +7,11 @@ export const ADMIN_MENU_SIDEBAR: TMenuConfig = [
     path: '/'
   },
   {
+    title: 'Jobs',
+    icon: 'element-11',
+    path: '/admin/jobs'
+  },
+  {
     title: 'Organization',
     icon: 'office-bag',
     children: [
@@ -76,6 +81,47 @@ export const ADMIN_MENU_SIDEBAR: TMenuConfig = [
     heading: 'System'
   },
   {
+    title: 'Reminders & Notifications',
+    icon: 'notification',
+    children: [
+      {
+        title: 'Templates',
+        icon: 'document',
+        path: '/admin/reminders/templates'
+      },
+      {
+        title: 'Create Template',
+        icon: 'plus',
+        path: '/admin/reminders/templates/create'
+      },
+      {
+        title: 'Scheduled Reminders',
+        icon: 'calendar',
+        path: '/admin/reminders/scheduled'
+      }
+    ]
+  },
+  {
+    title: 'Vehicle History',
+    icon: 'car',
+    path: '/admin/vehicles'
+  },
+  {
+    title: 'Media Management',
+    icon: 'image',
+    path: '/admin/media'
+  },
+  {
+    title: 'PDF Configuration',
+    icon: 'file-text',
+    path: '/admin/pdf-config'
+  },
+  {
+    title: 'System Settings',
+    icon: 'setting-2',
+    path: '/admin/system'
+  },
+  {
     title: 'Activity Log',
     icon: 'notification',
     path: '/admin/activity'
@@ -107,24 +153,31 @@ export const ADMIN_MENU_ROOT: TMenuConfig = [
     childrenIndex: 0
   },
   {
+    title: 'Jobs',
+    icon: 'element-11',
+    rootPath: '/admin/jobs/',
+    path: '/admin/jobs',
+    childrenIndex: 1
+  },
+  {
     title: 'Garages',
     icon: 'building',
     rootPath: '/admin/garages/',
     path: '/admin/garages',
-    childrenIndex: 1
+    childrenIndex: 2
   },
   {
     title: 'Users',
     icon: 'users',
     rootPath: '/admin/users/',
     path: '/admin/users',
-    childrenIndex: 2
+    childrenIndex: 4
   },
   {
     title: 'Settings',
     icon: 'setting-2',
     rootPath: '/admin/settings/',
     path: '/admin/settings',
-    childrenIndex: 3
+    childrenIndex: 5
   }
 ];

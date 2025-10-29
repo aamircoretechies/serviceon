@@ -2,6 +2,146 @@ import { type TMenuConfig } from '@/components/menu';
 import { ADMIN_MENU_SIDEBAR, ADMIN_MENU_ROOT } from './admin-menu.config';
 
 export const MENU_SIDEBAR: TMenuConfig = [
+  {
+    title: 'Dashboard',
+    icon: 'element-11',
+    path: '/'
+  },
+  {
+    title: 'Jobs',
+    icon: 'car',
+    path: '/admin/jobs'
+  },
+  {
+    title: 'Organization',
+    icon: 'office-bag',
+    children: [
+      {
+        title: 'All Garages',
+        icon: 'building',
+        path: '/admin/garages'
+      },
+      {
+        title: 'Add Garage',
+        icon: 'plus',
+        path: '/admin/garages/create'
+      }
+    ]
+  },
+  {
+    title: 'Branding & Output',
+    icon: 'color-swatch',
+    children: [
+      {
+        title: 'Branding Settings',
+        icon: 'color-swatch',
+        path: '/admin/branding'
+      },
+      {
+        title: 'Output Settings',
+        icon: 'document',
+        path: '/admin/branding/output'
+      }
+    ]
+  },
+  {
+    title: 'Intake Checklist',
+    icon: 'check',
+    path: '/admin/checklist'
+  },
+  {
+    title: 'Labor Rates',
+    icon: 'dollar',
+    path: '/admin/labor-rates'
+  },
+  {
+    heading: 'User Management'
+  },
+  {
+    title: 'Users',
+    icon: 'users',
+    children: [
+      {
+        title: 'All Users',
+        icon: 'users',
+        path: '/admin/users'
+      },
+      {
+        title: 'Add User',
+        icon: 'user-plus',
+        path: '/admin/users/create'
+      },
+     
+    ]
+  },
+  {
+    heading: 'System'
+  },
+  {
+    title: 'Reminders & Notifications',
+    icon: 'notification',
+    children: [
+      {
+        title: 'Templates',
+        icon: 'document',
+        path: '/admin/reminders/templates'
+      },
+      {
+        title: 'Create Template',
+        icon: 'plus',
+        path: '/admin/reminders/templates/create'
+      },
+      {
+        title: 'Scheduled Reminders',
+        icon: 'calendar',
+        path: '/admin/reminders/scheduled'
+      }
+    ]
+  },
+  {
+    title: 'Vehicle History',
+    icon: 'car',
+    path: '/admin/vehicles'
+  },
+  {
+    title: 'Media Management',
+    icon: 'picture',
+    path: '/admin/media'
+  },
+  {
+    title: 'PDF Configuration',
+    icon: 'files',
+    path: '/admin/pdf-config'
+  },
+  {
+    title: 'System Settings',
+    icon: 'setting-2',
+    path: '/admin/system'
+  },
+  {
+    title: 'Activity Log',
+    icon: 'notification',
+    path: '/admin/activity'
+  },
+  /* {
+    title: 'Settings',
+    icon: 'setting-2',
+    children: [
+      {
+        title: 'General Settings',
+        icon: 'setting-2',
+        path: '/admin/settings'
+      },
+      {
+        title: 'Security',
+        icon: 'shield-tick',
+        path: '/admin/settings/security'
+      }
+    ]
+  } */
+];
+
+const OLD_MENU_SIDEBAR: TMenuConfig = [
   /* {
     title: 'Dashboards',
     icon: 'element-11',
@@ -578,6 +718,47 @@ export const MENU_SIDEBAR: TMenuConfig = [
     ]
   },
   {
+    title: 'Reminders & Notifications',
+    icon: 'notification',
+    children: [
+      {
+        title: 'Templates',
+        icon: 'document',
+        path: '/admin/reminders/templates'
+      },
+      {
+        title: 'Create Template',
+        icon: 'plus',
+        path: '/admin/reminders/templates/create'
+      },
+      {
+        title: 'Scheduled Reminders',
+        icon: 'calendar',
+        path: '/admin/reminders/scheduled'
+      }
+    ]
+  },
+  {
+    title: 'Vehicle History',
+    icon: 'car',
+    path: '/admin/vehicles'
+  },
+  {
+    title: 'Media Management',
+    icon: 'image',
+    path: '/admin/media'
+  },
+  {
+    title: 'PDF Configuration',
+    icon: 'file-text',
+    path: '/admin/pdf-config'
+  },
+  {
+    title: 'System Settings',
+    icon: 'setting-2',
+    path: '/admin/system'
+  },
+  {
     title: 'Activity Log',
     icon: 'notification',
     path: '/admin/activity'
@@ -1032,6 +1213,11 @@ export const MENU_MEGA: TMenuConfig = [
           { title: 'Labor Rates', icon: 'dollar', path: '/admin/labor-rates' },
           { title: 'Users', icon: 'users', path: '/admin/users' },
           { title: 'Add User', icon: 'user-plus', path: '/admin/users/create' },
+          { title: 'Reminders - Templates', icon: 'document', path: '/admin/reminders/templates' },
+          { title: 'Reminders - Create', icon: 'plus', path: '/admin/reminders/templates/create' },
+          { title: 'Scheduled Reminders', icon: 'calendar', path: '/admin/reminders/scheduled' },
+          { title: 'Vehicle History', icon: 'car', path: '/admin/vehicles' },
+          { title: 'Media Management', icon: 'image', path: '/admin/media' },
           { title: 'Activity Log', icon: 'activity', path: '/admin/activity' }
         ]
       }
