@@ -25,7 +25,7 @@ const CreateGaragePage = () => {
               </ToolbarDescription>
             </ToolbarHeading>
             <ToolbarActions>
-              <a href="/admin/garages" className="btn btn-sm btn-light">
+              <a href="/serviceon/admin/garages" className="btn btn-sm btn-light">
                 Back to Garages
               </a>
             </ToolbarActions>

@@ -31,7 +31,7 @@ const GaragesListPage = () => {
               <a href="#" className="btn btn-sm btn-light">
                 Export CSV
               </a>
-              <a href="/admin/garages/create" className="btn btn-sm btn-primary">
+              <a href="/serviceon/admin/garages/create" className="btn btn-sm btn-primary">
                 Add Garage
               </a>
             </ToolbarActions>

@@ -28,10 +28,10 @@ const AdminDashboardPage = () => {
               </ToolbarDescription>
             </ToolbarHeading>
             <ToolbarActions>
-              <a href="/admin/garages/create" className="btn btn-sm btn-light">
+              <a href="/serviceon/admin/garages/create" className="btn btn-sm btn-light">
                 Add Garage
               </a>
-              <a href="/admin/users/create" className="btn btn-sm btn-primary">
+              <a href="/serviceon/admin/users/create" className="btn btn-sm btn-primary">
                 Add User
               </a>
             </ToolbarActions>

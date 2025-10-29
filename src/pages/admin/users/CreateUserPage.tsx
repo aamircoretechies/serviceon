@@ -25,7 +25,7 @@ const CreateUserPage = () => {
               </ToolbarDescription>
             </ToolbarHeading>
             <ToolbarActions>
-              <a href="/admin/users" className="btn btn-sm btn-light">
+              <a href="/serviceon/admin/users" className="btn btn-sm btn-light">
                 Back to Users
               </a>
             </ToolbarActions>
