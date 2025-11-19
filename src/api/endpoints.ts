@@ -24,11 +24,19 @@ export const AUTH_ENDPOINTS = {
 } as const;
 
 /**
+ * Timezone Endpoints
+ */
+export const TIMEZONE_ENDPOINTS = {
+  GET_ALL: `${API_URL}/time-zones/get-all`,
+} as const;
+
+/**
  * Export all endpoints for easy access
  * Additional endpoints will be added here as we integrate features
  */
 export const API_ENDPOINTS = {
   AUTH: AUTH_ENDPOINTS,
+  TIMEZONE: TIMEZONE_ENDPOINTS,
   // Additional endpoints will be added here incrementally
 } as const;
 

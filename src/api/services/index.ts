@@ -5,4 +5,5 @@
  */
 
 export * from './auth.service';
+export * from './timezone.service';
 

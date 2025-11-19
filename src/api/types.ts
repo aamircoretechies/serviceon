@@ -147,3 +147,28 @@ export interface FileUploadResponse {
   uploaded_at: string;
 }
 
+/**
+ * Timezone Model
+ */
+export interface Timezone {
+  id: number;
+  timezone_name: string;
+  timezone_code: string;
+  utc_offset: string;
+  country: string;
+  country_code: string;
+  city: string;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Timezones Response
+ */
+export interface TimezonesResponse {
+  data: Timezone[];
+  message: string;
+  status: number;
+}
+

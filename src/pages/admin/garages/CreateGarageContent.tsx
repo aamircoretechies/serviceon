@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload, X, Palette, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,8 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { BrandingPreviewModal } from './BrandingPreviewModal';
 import { toast } from 'sonner';
+import { timezoneService } from '@/api/services';
+import type { Timezone } from '@/api/types';
 
 const CreateGarageContent = () => {
   const navigate = useNavigate();
@@ -39,6 +41,40 @@ const CreateGarageContent = () => {
   const [showBrandingPreview, setShowBrandingPreview] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [timezones, setTimezones] = useState<Timezone[]>([]);
+  const [loadingTimezones, setLoadingTimezones] = useState(false);
+
+  // Fetch timezones from API on component mount
+  useEffect(() => {
+    const fetchTimezones = async () => {
+      setLoadingTimezones(true);
+      try {
+        const timezonesData = await timezoneService.getAll();
+        setTimezones(timezonesData);
+        
+        // Set default timezone if none is set and we have timezones
+        setFormData(prev => {
+          if (!prev.timezone && timezonesData.length > 0) {
+            // Try to find America/New_York first, otherwise use first timezone
+            const defaultTz = timezonesData.find(tz => tz.timezone_name === 'America/New_York') 
+              || timezonesData[0];
+            if (defaultTz) {
+              return { ...prev, timezone: defaultTz.timezone_name };
+            }
+          }
+          return prev;
+        });
+      } catch (error) {
+        console.error('Failed to fetch timezones:', error);
+        toast.error('Failed to load timezones. Please refresh the page.');
+      } finally {
+        setLoadingTimezones(false);
+      }
+    };
+
+    fetchTimezones();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -125,15 +161,6 @@ const CreateGarageContent = () => {
     }
   };
 
-  const timezones = [
-    'America/New_York',
-    'America/Chicago',
-    'America/Denver',
-    'America/Los_Angeles',
-    'America/Phoenix',
-    'America/Anchorage',
-    'Pacific/Honolulu'
-  ];
 
   return (
     <Fragment>
@@ -291,18 +318,22 @@ const CreateGarageContent = () => {
                     <Select 
                       value={formData.timezone} 
                       onValueChange={(value) => handleInputChange('timezone', value)}
+                      disabled={loadingTimezones}
                     >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder={loadingTimezones ? 'Loading timezones...' : 'Select timezone'} />
                       </SelectTrigger>
                       <SelectContent>
                         {timezones.map((tz) => (
-                          <SelectItem key={tz} value={tz}>
-                            {tz.replace('_', ' ')}
+                          <SelectItem key={tz.id} value={tz.timezone_name}>
+                            {tz.timezone_name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {loadingTimezones && (
+                      <p className="text-sm text-gray-500">Loading timezones...</p>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between">
