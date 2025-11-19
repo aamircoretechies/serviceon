@@ -1,4 +1,4 @@
-import { type MouseEvent, useState } from 'react';
+import { type MouseEvent, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import * as Yup from 'yup';
@@ -22,23 +22,37 @@ const loginSchema = Yup.object().shape({
   remember: Yup.boolean()
 });
 
-const initialValues = {
-  email: 'demo@serviceon.com',
-  password: 'demo1234',
-  remember: false
+// Load saved credentials from localStorage
+const getInitialValues = () => {
+  const savedEmail = localStorage.getItem('remembered_email');
+  const savedPassword = localStorage.getItem('remembered_password');
+  const isRemembered = savedEmail && savedPassword;
+
+  return {
+    email: savedEmail || '',
+    password: savedPassword || '',
+    remember: isRemembered || false
+  };
 };
 
 const Login = () => {
   const [loading, setLoading] = useState(false);
-  const { login } = useAuthContext();
+  const { login, auth } = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || '/';
   const [showPassword, setShowPassword] = useState(false);
   const { currentLayout } = useLayout();
 
+  // Redirect to dashboard if user is already logged in
+  useEffect(() => {
+    if (auth) {
+      navigate(from || '/', { replace: true });
+    }
+  }, [auth, navigate, from]);
+
   const formik = useFormik({
-    initialValues,
+    initialValues: getInitialValues(),
     validationSchema: loginSchema,
     onSubmit: async (values, { setStatus, setSubmitting }) => {
       setLoading(true);
@@ -48,12 +62,16 @@ const Login = () => {
           throw new Error('JWTProvider is required for this form.');
         }
 
-        await login('demo@keenthemes.com', values.password);
+        // Use the email and password from form values
+        await login(values.email, values.password);
 
+        // Save email and password to localStorage if remember me is checked
         if (values.remember) {
-          localStorage.setItem('email', 'demo@keenthemes.com');
+          localStorage.setItem('remembered_email', values.email);
+          localStorage.setItem('remembered_password', values.password);
         } else {
-          localStorage.removeItem('email');
+          localStorage.removeItem('remembered_email');
+          localStorage.removeItem('remembered_password');
         }
 
         navigate(from, { replace: true });

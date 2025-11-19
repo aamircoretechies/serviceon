@@ -17,7 +17,7 @@ export const LOGIN_URL = `${API_URL}/login`;
 export const REGISTER_URL = `${API_URL}/register`;
 export const FORGOT_PASSWORD_URL = `${API_URL}/forgot-password`;
 export const RESET_PASSWORD_URL = `${API_URL}/reset-password`;
-export const GET_USER_URL = `${API_URL}/user`;
+export const GET_USER_URL = `${API_URL}/dashboard/get`;
 
 interface AuthContextProps {
   loading: boolean;
@@ -73,16 +73,41 @@ const AuthProvider = ({ children }: PropsWithChildren) => {
 
   const login = async (email: string, password: string) => {
     try {
-      const { data: auth } = await axios.post<AuthModel>(LOGIN_URL, {
-        email,
-        password
-      });
-      saveAuth(auth);
-      const { data: user } = await getUser();
-      setCurrentUser(user);
-    } catch (error) {
+      // Use the new auth service
+      const { authService } = await import('@/api/services');
+      const loginResponse = await authService.login({ email, password });
+
+      // Check if login was successful (status === 1)
+      if (loginResponse.status === 1) {
+        // Map the API response to AuthModel format
+        const auth: AuthModel = {
+          access_token: loginResponse.bearer_token,
+          bearer_token: loginResponse.bearer_token,
+          api_token: loginResponse.bearer_token, // Using bearer_token as api_token
+          user_id: loginResponse.user_id,
+          user_role: loginResponse.user_role,
+          user_status: loginResponse.user_status,
+        };
+
+        // Save auth - this updates React state first, then localStorage
+        saveAuth(auth);
+
+        // Set current user with the user_id
+        setCurrentUser({
+          id: loginResponse.user_id,
+          email: email,
+          username: email,
+          password: undefined,
+          first_name: '',
+          last_name: '',
+        });
+      } else {
+        throw new Error(loginResponse.message || 'Login failed');
+      }
+    } catch (error: any) {
       saveAuth(undefined);
-      throw new Error(`Error ${error}`);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Login failed';
+      throw new Error(errorMessage);
     }
   };
 
