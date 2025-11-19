@@ -31,12 +31,20 @@ export const TIMEZONE_ENDPOINTS = {
 } as const;
 
 /**
+ * Garage Endpoints
+ */
+export const GARAGE_ENDPOINTS = {
+  CREATE: `${API_URL}/garage/create`,
+} as const;
+
+/**
  * Export all endpoints for easy access
  * Additional endpoints will be added here as we integrate features
  */
 export const API_ENDPOINTS = {
   AUTH: AUTH_ENDPOINTS,
   TIMEZONE: TIMEZONE_ENDPOINTS,
+  GARAGE: GARAGE_ENDPOINTS,
   // Additional endpoints will be added here incrementally
 } as const;
 

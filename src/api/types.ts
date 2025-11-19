@@ -172,3 +172,51 @@ export interface TimezonesResponse {
   status: number;
 }
 
+/**
+ * Garage Create Request
+ */
+export interface CreateGarageRequest {
+  garage_name: string;
+  garage_phone_number: string;
+  garage_email_address: string;
+  garage_description: string;
+  garage_street_address: string;
+  garage_city: string;
+  garage_state: string;
+  garage_zip_code: string;
+  time_zone_id: number;
+  status: number;
+  garage_brand_color: string;
+  garage_logo?: File;
+}
+
+/**
+ * Garage Model
+ */
+export interface Garage {
+  garage_id: number;
+  garage_name: string;
+  garage_phone_number: string;
+  garage_email_address: string;
+  garage_description: string;
+  garage_logo: string;
+  garage_street_address: string;
+  garage_city: string;
+  garage_state: string;
+  garage_zip_code: string;
+  time_zone_id: number;
+  status: number;
+  garage_brand_color: string;
+  created: string;
+  updated: string;
+}
+
+/**
+ * Garage Create Response
+ */
+export interface CreateGarageResponse {
+  data: Garage;
+  message: string;
+  status: number;
+}
+

@@ -17,7 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { BrandingPreviewModal } from './BrandingPreviewModal';
 import { toast } from 'sonner';
-import { timezoneService } from '@/api/services';
+import { timezoneService, garageService } from '@/api/services';
 import type { Timezone } from '@/api/types';
 
 const CreateGarageContent = () => {
@@ -147,15 +147,43 @@ const CreateGarageContent = () => {
       return;
     }
     
+    // Find the timezone ID from the selected timezone name
+    const selectedTimezone = timezones.find(tz => tz.timezone_name === formData.timezone);
+    if (!selectedTimezone) {
+      toast.error('Please select a valid timezone');
+      return;
+    }
+    
     setIsSubmitting(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log('Creating garage:', formData);
-      toast.success('Garage created successfully!');
-      navigate('/admin/garages');
-    } catch (error) {
-      toast.error('Failed to create garage. Please try again.');
+      // Map form data to API format
+      const garageData = {
+        garage_name: formData.name,
+        garage_phone_number: formData.phone,
+        garage_email_address: formData.email,
+        garage_description: formData.description || '',
+        garage_street_address: formData.address,
+        garage_city: formData.city,
+        garage_state: formData.state,
+        garage_zip_code: formData.zipCode,
+        time_zone_id: selectedTimezone.id,
+        status: formData.status === 'active' ? 1 : 0,
+        garage_brand_color: formData.brandColor,
+        garage_logo: formData.logo || undefined,
+      };
+
+      const response = await garageService.create(garageData);
+      
+      if (response.status === 1) {
+        toast.success(response.message || 'Garage created successfully!');
+        navigate('/admin/garages');
+      } else {
+        throw new Error(response.message || 'Failed to create garage');
+      }
+    } catch (error: any) {
+      console.error('Error creating garage:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to create garage. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
