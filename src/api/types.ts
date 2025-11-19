@@ -220,3 +220,101 @@ export interface CreateGarageResponse {
   status: number;
 }
 
+/**
+ * Garage Get All Request
+ */
+export interface GetGaragesRequest {
+  page?: number;
+  size?: number;
+  search?: string;
+  status?: number | string;
+}
+
+/**
+ * Paginated Garage Content
+ */
+export interface PaginatedGarageContent {
+  content: Garage[];
+  pageable: {
+    pageNumber: number;
+    pageSize: number;
+    sort: {
+      sorted: boolean;
+      empty: boolean;
+      unsorted: boolean;
+    };
+    offset: number;
+    paged: boolean;
+    unpaged: boolean;
+  };
+  last: boolean;
+  totalPages: number;
+  totalElements: number;
+  first: boolean;
+  size: number;
+  number: number;
+  sort: {
+    sorted: boolean;
+    empty: boolean;
+    unsorted: boolean;
+  };
+  numberOfElements: number;
+  empty: boolean;
+}
+
+/**
+ * Garage Get All Response
+ */
+export interface GetGaragesResponse {
+  data: {
+    garages: PaginatedGarageContent;
+    total_garages_count: number;
+    active_garages_count: number;
+  };
+  message: string;
+  status: number;
+}
+
+/**
+ * Garage Update Request
+ */
+export interface UpdateGarageRequest {
+  garage_id: number;
+  garage_name: string;
+  garage_phone_number: string;
+  garage_email_address: string;
+  garage_description: string;
+  garage_street_address: string;
+  garage_city: string;
+  garage_state: string;
+  garage_zip_code: string;
+  time_zone_id: number;
+  status: number;
+  garage_brand_color: string;
+  garage_logo?: File;
+}
+
+/**
+ * Garage Update Response
+ */
+export interface UpdateGarageResponse {
+  data: Garage;
+  message: string;
+  status: number;
+}
+
+/**
+ * Garage Delete Request
+ */
+export interface DeleteGarageRequest {
+  garage_id: number;
+}
+
+/**
+ * Garage Delete Response
+ */
+export interface DeleteGarageResponse {
+  message: string;
+  status: number;
+}
+

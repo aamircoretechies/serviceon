@@ -17,14 +17,10 @@ const GaragesListPage = () => {
       {currentLayout?.name === 'demo1-layout' && (
         <Container>
           <Toolbar>
+            {/* Total Garages count is now displayed in GaragesListContent */}
             <ToolbarHeading>
               <ToolbarDescription>
-                <div className="flex items-center flex-wrap gap-1.5 font-medium">
-                  <span className="text-md text-gray-700">Total Garages:</span>
-                  <span className="text-md text-gray-800 font-medium me-2">12</span>
-                  <span className="text-md text-gray-700">Active:</span>
-                  <span className="text-md text-green-600 font-medium">10</span>
-                </div>
+                {/* Stats are shown in GaragesListContent component */}
               </ToolbarDescription>
             </ToolbarHeading>
             <ToolbarActions>

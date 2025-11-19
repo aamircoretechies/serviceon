@@ -117,3 +117,13 @@ export const isTesting = (): boolean => {
   return API_CONFIG.ENVIRONMENT === 'testing';
 };
 
+/**
+ * Images Base URL
+ * Base URL for serving images (logos, avatars, etc.)
+ */
+export const getImagesBaseUrl = (): string => {
+  return import.meta.env.VITE_APP_IMAGES_BASE_URL || 'https://jaap.live/serviceon-images';
+};
+
+export const IMAGES_BASE_URL = getImagesBaseUrl();
+

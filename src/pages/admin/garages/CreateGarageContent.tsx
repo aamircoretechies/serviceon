@@ -1,5 +1,5 @@
 import { Fragment, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Upload, X, Palette, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,10 +18,14 @@ import { Badge } from '@/components/ui/badge';
 import { BrandingPreviewModal } from './BrandingPreviewModal';
 import { toast } from 'sonner';
 import { timezoneService, garageService } from '@/api/services';
-import type { Timezone } from '@/api/types';
+import type { Timezone, Garage } from '@/api/types';
+import { IMAGES_BASE_URL } from '@/api/config';
 
 const CreateGarageContent = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const editGarage = location.state?.garage as Garage | undefined;
+  const isEditMode = !!editGarage;
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -44,7 +48,7 @@ const CreateGarageContent = () => {
   const [timezones, setTimezones] = useState<Timezone[]>([]);
   const [loadingTimezones, setLoadingTimezones] = useState(false);
 
-  // Fetch timezones from API on component mount
+  // Fetch timezones from API on component mount and pre-fill form if editing
   useEffect(() => {
     const fetchTimezones = async () => {
       setLoadingTimezones(true);
@@ -52,18 +56,45 @@ const CreateGarageContent = () => {
         const timezonesData = await timezoneService.getAll();
         setTimezones(timezonesData);
         
-        // Set default timezone if none is set and we have timezones
-        setFormData(prev => {
-          if (!prev.timezone && timezonesData.length > 0) {
-            // Try to find America/New_York first, otherwise use first timezone
-            const defaultTz = timezonesData.find(tz => tz.timezone_name === 'America/New_York') 
-              || timezonesData[0];
-            if (defaultTz) {
-              return { ...prev, timezone: defaultTz.timezone_name };
-            }
+        // Pre-fill form if in edit mode
+        if (isEditMode && editGarage) {
+          // Find timezone name from ID
+          const garageTimezone = timezonesData.find(tz => tz.id === editGarage.time_zone_id);
+          
+          setFormData({
+            name: editGarage.garage_name,
+            address: editGarage.garage_street_address,
+            city: editGarage.garage_city,
+            state: editGarage.garage_state,
+            zipCode: editGarage.garage_zip_code,
+            phone: editGarage.garage_phone_number,
+            email: editGarage.garage_email_address,
+            timezone: garageTimezone?.timezone_name || '',
+            status: editGarage.status === 1 ? 'active' : 'inactive',
+            description: editGarage.garage_description || '',
+            logo: null, // Logo is handled separately
+            brandColor: editGarage.garage_brand_color || '#3B82F6'
+          });
+
+          // Set logo preview if logo exists
+          if (editGarage.garage_logo) {
+            const logoUrl = `${IMAGES_BASE_URL}/${editGarage.garage_logo}`;
+            setLogoPreview(logoUrl);
           }
-          return prev;
-        });
+        } else {
+          // Set default timezone if none is set and we have timezones
+          setFormData(prev => {
+            if (!prev.timezone && timezonesData.length > 0) {
+              // Try to find America/New_York first, otherwise use first timezone
+              const defaultTz = timezonesData.find(tz => tz.timezone_name === 'America/New_York') 
+                || timezonesData[0];
+              if (defaultTz) {
+                return { ...prev, timezone: defaultTz.timezone_name };
+              }
+            }
+            return prev;
+          });
+        }
       } catch (error) {
         console.error('Failed to fetch timezones:', error);
         toast.error('Failed to load timezones. Please refresh the page.');
@@ -74,7 +105,7 @@ const CreateGarageContent = () => {
 
     fetchTimezones();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isEditMode, editGarage]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -156,33 +187,61 @@ const CreateGarageContent = () => {
     
     setIsSubmitting(true);
     try {
-      // Map form data to API format
-      const garageData = {
-        garage_name: formData.name,
-        garage_phone_number: formData.phone,
-        garage_email_address: formData.email,
-        garage_description: formData.description || '',
-        garage_street_address: formData.address,
-        garage_city: formData.city,
-        garage_state: formData.state,
-        garage_zip_code: formData.zipCode,
-        time_zone_id: selectedTimezone.id,
-        status: formData.status === 'active' ? 1 : 0,
-        garage_brand_color: formData.brandColor,
-        garage_logo: formData.logo || undefined,
-      };
+      if (isEditMode && editGarage) {
+        // Update existing garage
+        const updateData = {
+          garage_id: editGarage.garage_id,
+          garage_name: formData.name,
+          garage_phone_number: formData.phone,
+          garage_email_address: formData.email,
+          garage_description: formData.description || '',
+          garage_street_address: formData.address,
+          garage_city: formData.city,
+          garage_state: formData.state,
+          garage_zip_code: formData.zipCode,
+          time_zone_id: selectedTimezone.id,
+          status: formData.status === 'active' ? 1 : 0,
+          garage_brand_color: formData.brandColor,
+          garage_logo: formData.logo || undefined,
+        };
 
-      const response = await garageService.create(garageData);
-      
-      if (response.status === 1) {
-        toast.success(response.message || 'Garage created successfully!');
-        navigate('/admin/garages');
+        const response = await garageService.update(updateData);
+        
+        if (response.status === 1) {
+          toast.success(response.message || 'Garage updated successfully!');
+          navigate('/admin/garages');
+        } else {
+          throw new Error(response.message || 'Failed to update garage');
+        }
       } else {
-        throw new Error(response.message || 'Failed to create garage');
+        // Create new garage
+        const garageData = {
+          garage_name: formData.name,
+          garage_phone_number: formData.phone,
+          garage_email_address: formData.email,
+          garage_description: formData.description || '',
+          garage_street_address: formData.address,
+          garage_city: formData.city,
+          garage_state: formData.state,
+          garage_zip_code: formData.zipCode,
+          time_zone_id: selectedTimezone.id,
+          status: formData.status === 'active' ? 1 : 0,
+          garage_brand_color: formData.brandColor,
+          garage_logo: formData.logo || undefined,
+        };
+
+        const response = await garageService.create(garageData);
+        
+        if (response.status === 1) {
+          toast.success(response.message || 'Garage created successfully!');
+          navigate('/admin/garages');
+        } else {
+          throw new Error(response.message || 'Failed to create garage');
+        }
       }
     } catch (error: any) {
-      console.error('Error creating garage:', error);
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to create garage. Please try again.';
+      console.error(`Error ${isEditMode ? 'updating' : 'creating'} garage:`, error);
+      const errorMessage = error?.response?.data?.message || error?.message || `Failed to ${isEditMode ? 'update' : 'create'} garage. Please try again.`;
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -205,8 +264,12 @@ const CreateGarageContent = () => {
             Back to Garages
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Add New Garage</h1>
-            <p className="text-gray-600 dark:text-gray-400">Create a new garage location</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              {isEditMode ? 'Edit Garage' : 'Add New Garage'}
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              {isEditMode ? 'Update garage information with branding and settings' : 'Create a new garage location with branding and settings'}
+            </p>
           </div>
         </div>
 
@@ -543,7 +606,9 @@ const CreateGarageContent = () => {
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating...' : 'Create Garage'}
+              {isSubmitting 
+                ? (isEditMode ? 'Updating...' : 'Creating...') 
+                : (isEditMode ? 'Update Garage' : 'Create Garage')}
             </Button>
           </div>
         </form>

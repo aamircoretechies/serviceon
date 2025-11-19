@@ -35,6 +35,9 @@ export const TIMEZONE_ENDPOINTS = {
  */
 export const GARAGE_ENDPOINTS = {
   CREATE: `${API_URL}/garage/create`,
+  GET_ALL: `${API_URL}/garage/get-all`,
+  UPDATE: `${API_URL}/garage/update`,
+  DELETE: `${API_URL}/garage/delete`,
 } as const;
 
 /**

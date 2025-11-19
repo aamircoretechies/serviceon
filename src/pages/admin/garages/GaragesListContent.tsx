@@ -1,5 +1,5 @@
-import { Fragment, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Fragment, useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   Plus, 
   Search, 
@@ -45,10 +45,21 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BrandingPreviewModal } from './BrandingPreviewModal';
 import { ConfirmationDialog } from './ConfirmationDialog';
 import { toast } from 'sonner';
+import { garageService, timezoneService } from '@/api/services';
+import type { Garage, Timezone } from '@/api/types';
+import { IMAGES_BASE_URL } from '@/api/config';
 
 const GaragesListContent = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [garages, setGarages] = useState<Garage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [timezones, setTimezones] = useState<Timezone[]>([]);
+  const [timezoneMap, setTimezoneMap] = useState<Map<number, string>>(new Map());
+  const [totalGarages, setTotalGarages] = useState(0);
+  const [activeGarages, setActiveGarages] = useState(0);
   const [confirmationDialog, setConfirmationDialog] = useState<{
     open: boolean;
     garageId: number;
@@ -65,124 +76,141 @@ const GaragesListContent = () => {
     open: false,
     garageData: null
   });
-  const [isLoading, setIsLoading] = useState(false);
 
-  // Mock data - replace with actual data
-  const garages = [
-    {
-      id: 1,
-      name: 'Downtown Auto Service',
-      address: '123 Main St, Downtown',
-      phone: '(555) 123-4567',
-      email: 'info@downtownauto.com',
-      timezone: 'America/New_York',
-      status: 'active',
-      logo: '/media/avatars/garage-1.png',
-      brandColor: '#3B82F6',
-      createdAt: '2024-01-15',
-      lastUpdated: '2024-01-20'
-    },
-    {
-      id: 2,
-      name: 'Westside Garage',
-      address: '456 Oak Ave, Westside',
-      phone: '(555) 234-5678',
-      email: 'contact@westsidegarage.com',
-      timezone: 'America/Los_Angeles',
-      status: 'active',
-      logo: '/media/avatars/garage-2.png',
-      brandColor: '#10B981',
-      createdAt: '2024-01-10',
-      lastUpdated: '2024-01-18'
-    },
-    {
-      id: 3,
-      name: 'North Point Motors',
-      address: '789 Pine Rd, North Point',
-      phone: '(555) 345-6789',
-      email: 'hello@northpointmotors.com',
-      timezone: 'America/Chicago',
-      status: 'inactive',
-      logo: null,
-      brandColor: '#F59E0B',
-      createdAt: '2024-01-05',
-      lastUpdated: '2024-01-12'
-    },
-    {
-      id: 4,
-      name: 'East End Auto',
-      address: '321 Elm St, East End',
-      phone: '(555) 456-7890',
-      email: 'service@eastendauto.com',
-      timezone: 'America/Denver',
-      status: 'active',
-      logo: '/media/avatars/garage-3.png',
-      brandColor: '#EF4444',
-      createdAt: '2024-01-08',
-      lastUpdated: '2024-01-19'
+  // Fetch timezones on mount
+  useEffect(() => {
+    const fetchTimezones = async () => {
+      try {
+        const timezonesData = await timezoneService.getAll();
+        setTimezones(timezonesData);
+        // Create a map for quick lookup
+        const map = new Map<number, string>();
+        timezonesData.forEach(tz => {
+          map.set(tz.id, tz.timezone_name);
+        });
+        setTimezoneMap(map);
+      } catch (error) {
+        console.error('Failed to fetch timezones:', error);
+      }
+    };
+    fetchTimezones();
+  }, []);
+
+  // Fetch garages from API
+  useEffect(() => {
+    fetchGarages();
+  }, [statusFilter, searchTerm]);
+
+  const fetchGarages = async () => {
+    setIsLoadingData(true);
+    try {
+      const params: any = {};
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+      if (statusFilter !== 'all') {
+        params.status = statusFilter === 'active' ? 1 : 0;
+      }
+
+      const response = await garageService.getAll(params);
+      
+      if (response.status === 1) {
+        setGarages(response.data.garages.content);
+        setTotalGarages(response.data.total_garages_count);
+        setActiveGarages(response.data.active_garages_count);
+      } else {
+        toast.error(response.message || 'Failed to load garages');
+      }
+    } catch (error: any) {
+      console.error('Error fetching garages:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to load garages';
+      toast.error(errorMessage);
+    } finally {
+      setIsLoadingData(false);
     }
-  ];
+  };
 
   const filteredGarages = garages.filter(garage => {
-    const matchesSearch = garage.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         garage.address.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || garage.status === statusFilter;
+    const matchesSearch = garage.garage_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         `${garage.garage_street_address}, ${garage.garage_city}`.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || 
+                         (statusFilter === 'active' && garage.status === 1) ||
+                         (statusFilter === 'inactive' && garage.status === 0);
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Active</Badge>;
-      case 'inactive':
-        return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Inactive</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+  const getStatusBadge = (status: number) => {
+    if (status === 1) {
+      return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Active</Badge>;
+    } else {
+      return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Inactive</Badge>;
     }
   };
 
-  const handleEdit = (garageId: number) => {
-    window.location.href = `/admin/garages/edit/${garageId}`;
+  const handleEdit = (garage: Garage) => {
+    // Navigate to create screen with garage data in state
+    navigate('/admin/garages/create', {
+      state: { garage }
+    });
   };
 
-  const handleDelete = (garageId: number) => {
-    const garage = garages.find(g => g.id === garageId);
-    if (garage) {
-      setConfirmationDialog({
-        open: true,
-        garageId,
-        garageName: garage.name
-      });
-    }
+  const handleDelete = (garage: Garage) => {
+    setConfirmationDialog({
+      open: true,
+      garageId: garage.garage_id,
+      garageName: garage.garage_name
+    });
   };
 
   const handleView = (garageId: number) => {
-    window.location.href = `/admin/garages/${garageId}`;
+    navigate(`/admin/garages/${garageId}`);
   };
 
-  const handleBrandingPreview = (garage: any) => {
+  const handleBrandingPreview = (garage: Garage) => {
+    // Map API garage data to preview format
+    const previewData = {
+      name: garage.garage_name,
+      address: `${garage.garage_street_address}, ${garage.garage_city}, ${garage.garage_state} ${garage.garage_zip_code}`,
+      phone: garage.garage_phone_number,
+      email: garage.garage_email_address,
+      timezone: '', // Will need to fetch timezone name from ID if needed
+      logo: garage.garage_logo ? `${IMAGES_BASE_URL}/${garage.garage_logo}` : undefined,
+      brandColor: garage.garage_brand_color
+    };
     setBrandingPreview({
       open: true,
-      garageData: garage
+      garageData: previewData
     });
   };
 
   const handleConfirmDelete = async () => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success('Garage deleted successfully');
-      setConfirmationDialog({ open: false, garageId: 0, garageName: '' });
-    } catch (error) {
-      toast.error('An error occurred. Please try again.');
+      const response = await garageService.delete({ garage_id: confirmationDialog.garageId });
+      
+      if (response.status === 1) {
+        toast.success(response.message || 'Garage deleted successfully');
+        setConfirmationDialog({ open: false, garageId: 0, garageName: '' });
+        // Refresh the list
+        await fetchGarages();
+      } else {
+        throw new Error(response.message || 'Failed to delete garage');
+      }
+    } catch (error: any) {
+      console.error('Error deleting garage:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to delete garage. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const formatTimezone = (timezone: string) => {
-    return timezone.replace('America/', '').replace('_', ' ');
+  const formatTimezone = (timezoneId: number) => {
+    const timezoneName = timezoneMap.get(timezoneId);
+    if (timezoneName) {
+      return timezoneName.replace(/_/g, ' ');
+    }
+    return `Timezone ID: ${timezoneId}`;
   };
 
   return (
@@ -193,6 +221,12 @@ const GaragesListContent = () => {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Garages</h1>
             <p className="text-gray-600 dark:text-gray-400">Manage your garage locations and settings</p>
+            <div className="flex items-center flex-wrap gap-1.5 font-medium mt-2">
+              <span className="text-md text-gray-700">Total Garages:</span>
+              <span className="text-md text-gray-800 font-medium me-2">{totalGarages}</span>
+              <span className="text-md text-gray-700">Active:</span>
+              <span className="text-md text-green-600 font-medium">{activeGarages}</span>
+            </div>
           </div>
           <Link to="/admin/garages/create">
             <Button className="flex items-center gap-2">
@@ -231,10 +265,10 @@ const GaragesListContent = () => {
                     <SelectItem value="inactive">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button variant="outline" className="flex items-center gap-2">
+                {/* <Button variant="outline" className="flex items-center gap-2">
                   <Filter className="h-4 w-4" />
                   More Filters
-                </Button>
+                </Button> */}
               </div>
             </div>
           </CardContent>
@@ -259,91 +293,113 @@ const GaragesListContent = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredGarages.map((garage) => (
-                    <TableRow key={garage.id} className="sand-hover-row">
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center sand-hover-avatar">
-                            <Building2 className="h-5 w-5 text-gray-600 dark:text-gray-400 sand-hover-icon" />
-                          </div>
-                          <div>
-                            <div className="font-medium">{garage.name}</div>
-                            <div className="text-sm text-gray-500">ID: {garage.id}</div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-gray-400" />
-                          <span className="text-sm">{garage.address}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-gray-400" />
-                          <span className="text-sm">{formatTimezone(garage.timezone)}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {garage.logo ? (
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage src={garage.logo} alt="Garage Logo" />
-                              <AvatarFallback>
-                                <ImageIcon className="h-4 w-4" />
-                              </AvatarFallback>
-                            </Avatar>
-                          ) : (
-                            <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                              <ImageIcon className="h-4 w-4 text-gray-400" />
-                            </div>
-                          )}
-                          <span className="text-sm text-gray-500">
-                            {garage.logo ? 'Uploaded' : 'No Logo'}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(garage.status)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleBrandingPreview(garage)}
-                            title="Branding Preview"
-                          >
-                            <EyeIcon className="h-4 w-4" />
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleView(garage.id)}>
-                                <Eye className="h-4 w-4 mr-2" />
-                                View
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleEdit(garage.id)}>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleDelete(garage.id)}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                  {isLoadingData ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8">
+                        <div className="flex items-center justify-center">
+                          <div className="text-gray-500">Loading garages...</div>
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : filteredGarages.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8">
+                        <div className="flex flex-col items-center justify-center">
+                          <Building2 className="h-12 w-12 text-gray-400 mb-2" />
+                          <div className="text-gray-500">No garages found</div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredGarages.map((garage) => (
+                      <TableRow key={garage.garage_id} className="sand-hover-row">
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center sand-hover-avatar">
+                              <Building2 className="h-5 w-5 text-gray-600 dark:text-gray-400 sand-hover-icon" />
+                            </div>
+                            <div>
+                              <div className="font-medium">{garage.garage_name}</div>
+                              <div className="text-sm text-gray-500">ID: {garage.garage_id}</div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm">{garage.garage_street_address}, {garage.garage_city}, {garage.garage_state}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm">{formatTimezone(garage.time_zone_id)}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {garage.garage_logo ? (
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage 
+                                  src={`${IMAGES_BASE_URL}/${garage.garage_logo}`} 
+                                  alt="Garage Logo" 
+                                />
+                                <AvatarFallback>
+                                  <ImageIcon className="h-4 w-4" />
+                                </AvatarFallback>
+                              </Avatar>
+                            ) : (
+                              <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                <ImageIcon className="h-4 w-4 text-gray-400" />
+                              </div>
+                            )}
+                            <span className="text-sm text-gray-500">
+                              {garage.garage_logo ? 'Uploaded' : 'No Logo'}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {getStatusBadge(garage.status)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleBrandingPreview(garage)}
+                              title="Branding Preview"
+                            >
+                              <EyeIcon className="h-4 w-4" />
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleView(garage.garage_id)}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEdit(garage)}>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDelete(garage)}
+                                  className="text-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
