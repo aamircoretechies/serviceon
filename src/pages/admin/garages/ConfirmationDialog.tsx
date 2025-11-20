@@ -27,31 +27,36 @@ const ConfirmationDialog = ({
 }: ConfirmationDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-gray-800 border-gray-700 text-white">
+      <DialogContent className="sm:max-w-lg bg-white dark:bg-gray-800">
         <DialogHeader className="space-y-0">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-red-500/20 flex items-center justify-center">
-                <Trash2 className="h-5 w-5 text-red-500" />
-              </div>
-              <DialogTitle className="text-white text-xl font-semibold">Delete Garage</DialogTitle>
+          {/* Close button */}
+          <button
+            onClick={() => onOpenChange(false)}
+            className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            disabled={isLoading}
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+          {/* Title with icon - positioned above content */}
+          <div className="flex items-center gap-4 mb-6 pr-8">
+            <div className="h-12 w-12 rounded-full bg-red-50 dark:bg-red-500/20 flex items-center justify-center flex-shrink-0">
+              <Trash2 className="h-6 w-6 text-red-600 dark:text-red-500" />
             </div>
-            <button
-              onClick={() => onOpenChange(false)}
-              className="text-gray-400 hover:text-white transition-colors"
-              disabled={isLoading}
-            >
-              <X className="h-5 w-5" />
-            </button>
+            <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-white">
+              Delete Garage
+            </DialogTitle>
           </div>
-          <DialogDescription className="text-gray-300 pt-2 space-y-3">
-            <p>
-              Are you sure you want to delete <strong className="text-white font-semibold">{garageName}</strong>?
+
+          {/* Content */}
+          <DialogDescription className="text-gray-700 dark:text-gray-300 space-y-4 pt-2">
+            <p className="text-base">
+              Are you sure you want to delete <strong className="text-gray-900 dark:text-white font-semibold">{garageName}</strong>?
             </p>
             <p className="text-sm">
               This action cannot be undone and will permanently remove the garage and all associated data including:
             </p>
-            <ul className="list-disc list-inside space-y-1 text-sm text-gray-300 ml-2">
+            <ul className="list-disc list-inside space-y-1.5 text-sm text-gray-600 dark:text-gray-400 ml-2">
               <li>All service records</li>
               <li>Customer data</li>
               <li>User assignments</li>
@@ -59,12 +64,12 @@ const ConfirmationDialog = ({
             </ul>
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="flex-row gap-3 mt-6">
+        <DialogFooter className="flex-row gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isLoading}
-            className="flex-1 bg-gray-700 border-gray-600 text-white hover:bg-gray-600"
+            className="flex-1 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
           >
             Cancel
           </Button>

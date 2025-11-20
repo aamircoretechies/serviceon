@@ -44,6 +44,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BrandingPreviewModal } from './BrandingPreviewModal';
 import { ConfirmationDialog } from './ConfirmationDialog';
+import { ViewGarageModal } from './ViewGarageModal';
 import { toast } from 'sonner';
 import { garageService, timezoneService } from '@/api/services';
 import type { Garage, Timezone } from '@/api/types';
@@ -75,6 +76,13 @@ const GaragesListContent = () => {
   }>({
     open: false,
     garageData: null
+  });
+  const [viewGarage, setViewGarage] = useState<{
+    open: boolean;
+    garage: Garage | null;
+  }>({
+    open: false,
+    garage: null
   });
 
   // Fetch timezones on mount
@@ -162,8 +170,11 @@ const GaragesListContent = () => {
     });
   };
 
-  const handleView = (garageId: number) => {
-    navigate(`/admin/garages/${garageId}`);
+  const handleView = (garage: Garage) => {
+    setViewGarage({
+      open: true,
+      garage: garage
+    });
   };
 
   const handleBrandingPreview = (garage: Garage) => {
@@ -378,7 +389,7 @@ const GaragesListContent = () => {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleView(garage.garage_id)}>
+                                <DropdownMenuItem onClick={() => handleView(garage)}>
                                   <Eye className="h-4 w-4 mr-2" />
                                   View
                                 </DropdownMenuItem>
@@ -413,6 +424,16 @@ const GaragesListContent = () => {
           open={brandingPreview.open}
           onOpenChange={(open) => setBrandingPreview(prev => ({ ...prev, open }))}
           garageData={brandingPreview.garageData}
+        />
+      )}
+
+      {/* View Garage Modal */}
+      {viewGarage.garage && (
+        <ViewGarageModal
+          open={viewGarage.open}
+          onOpenChange={(open) => setViewGarage(prev => ({ ...prev, open }))}
+          garage={viewGarage.garage}
+          timezoneName={timezoneMap.get(viewGarage.garage.time_zone_id)}
         />
       )}
 
