@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { garageService, userService, jobTypeService, serviceTypeService } from '@/api/services';
+import { garageService, userService, jobTypeService, serviceTypeService, jobService } from '@/api/services';
 import { toast } from 'sonner';
 import type { Garage, User as UserType, JobType, ServiceType } from '@/api/types';
 
@@ -68,6 +68,7 @@ const CreateJobContent = () => {
   const [isLoadingMechanics, setIsLoadingMechanics] = useState(false);
   const [isLoadingJobTypes, setIsLoadingJobTypes] = useState(false);
   const [isLoadingServiceTypes, setIsLoadingServiceTypes] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch garages from API
   useEffect(() => {
@@ -191,12 +192,97 @@ const CreateJobContent = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    console.log('Creating job:', formData);
-    // Navigate back to jobs list
-    navigate('/admin/jobs');
+    
+    console.log('Form submitted, formData:', formData);
+
+    // Validate required fields
+    if (!formData.vehicleMake || !formData.vehicleModel || !formData.vehicleYear || !formData.licensePlate) {
+      toast.error('Please fill in all required vehicle fields');
+      return;
+    }
+
+    if (!formData.customerName || !formData.customerPhone) {
+      toast.error('Please fill in all required customer fields');
+      return;
+    }
+
+    if (!formData.jobType || !formData.description) {
+      toast.error('Please fill in all required job fields');
+      return;
+    }
+
+    if (!formData.assignedGarage) {
+      toast.error('Please select a garage');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Map form data to API request format - send ALL fields even if empty
+      const jobTypeId = formData.jobType ? parseInt(formData.jobType) : undefined;
+      const garageId = formData.assignedGarage ? parseInt(formData.assignedGarage) : undefined;
+      const mechanicId = formData.assignedMechanic ? parseInt(formData.assignedMechanic) : undefined;
+      const serviceTypeId = formData.services.length > 0 ? parseInt(formData.services[0]) : undefined;
+      
+      const requestData = {
+        // Vehicle information - always send, use empty string if not provided
+        vehicle_make: formData.vehicleMake || '',
+        vehicle_model: formData.vehicleModel || '',
+        vehicle_year: formData.vehicleYear || '',
+        vehicle_license_plate: formData.licensePlate || '',
+        vehicle_vin: formData.vin || '',
+        vehicle_mileage: formData.mileage || '',
+        
+        // Customer information - always send, use empty string if not provided
+        customer_name: formData.customerName || '',
+        customer_phone_number: formData.customerPhone || '',
+        customer_email_address: formData.customerEmail || '',
+        
+        // Job information - always send, use undefined/empty for optional fields
+        job_type_id: jobTypeId,
+        job_priority: formData.priority ? parseInt(formData.priority) : undefined,
+        job_estimated_hours: formData.estimatedHours || '',
+        job_estimated_cost: formData.estimatedCost || '',
+        job_description: formData.description || '',
+        job_service_type: serviceTypeId,
+        
+        // Assignment - always send
+        garage_id: garageId,
+        mechanic_id: mechanicId,
+        
+        // Status and additional fields - always send
+        status: 1,
+        timer: '00:00:00', // Default timer value
+        extra_data: '', // Default empty
+        
+        // Parts data - always send arrays, even if empty
+        part_name: formData.parts.length > 0 ? formData.parts.map(part => part.name) : [],
+        part_count: formData.parts.length > 0 ? formData.parts.map(part => part.quantity) : [],
+        part_number: formData.parts.length > 0 ? formData.parts.map(() => '') : [], // Empty string for each part
+        part_description: formData.parts.length > 0 ? formData.parts.map(() => '') : [], // Empty string for each part
+        part_cost_total: formData.parts.length > 0 ? formData.parts.map(part => part.cost.toString()) : [],
+      };
+
+      console.log('Calling jobService.create with data:', requestData);
+      const response = await jobService.create(requestData);
+      console.log('API Response:', response);
+
+      if (response.status === 1) {
+        toast.success(response.message || 'Job created successfully');
+        navigate('/admin/jobs');
+      } else {
+        toast.error(response.message || 'Failed to create job');
+      }
+    } catch (error: any) {
+      console.error('Error creating job:', error);
+      const errorMessage = error?.response?.data?.message || 'Failed to create job';
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getPriorityBadge = (priority: string) => {
@@ -655,9 +741,9 @@ const CreateJobContent = () => {
             >
               Cancel
             </Button>
-            <Button type="submit" className="flex items-center gap-2">
+            <Button type="submit" className="flex items-center gap-2" disabled={isSubmitting}>
               <Save className="h-4 w-4" />
-              Create Job
+              {isSubmitting ? 'Creating...' : 'Create Job'}
             </Button>
           </div>
         </form>

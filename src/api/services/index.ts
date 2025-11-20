@@ -10,4 +10,5 @@ export * from './garage.service';
 export * from './user.service';
 export * from './job-type.service';
 export * from './service-type.service';
+export * from './job.service';
 

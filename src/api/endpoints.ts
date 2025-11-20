@@ -66,6 +66,13 @@ export const SERVICE_TYPE_ENDPOINTS = {
 } as const;
 
 /**
+ * Job Endpoints
+ */
+export const JOB_ENDPOINTS = {
+  CREATE: `${API_URL}/jobs/create`,
+} as const;
+
+/**
  * Export all endpoints for easy access
  * Additional endpoints will be added here as we integrate features
  */
@@ -76,6 +83,7 @@ export const API_ENDPOINTS = {
   USER: USER_ENDPOINTS,
   JOB_TYPE: JOB_TYPE_ENDPOINTS,
   SERVICE_TYPE: SERVICE_TYPE_ENDPOINTS,
+  JOB: JOB_ENDPOINTS,
   // Additional endpoints will be added here incrementally
 } as const;
 

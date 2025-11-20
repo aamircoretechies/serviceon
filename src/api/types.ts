@@ -506,3 +506,88 @@ export interface GetServiceTypesResponse {
   status: number;
 }
 
+/**
+ * Create Job Request
+ */
+export interface CreateJobRequest {
+  vehicle_make?: string;
+  vehicle_model?: string;
+  vehicle_year?: string;
+  vehicle_license_plate?: string;
+  vehicle_vin?: string;
+  vehicle_mileage?: string;
+  customer_name?: string;
+  customer_phone_number?: string;
+  customer_email_address?: string;
+  job_type_id?: number;
+  job_priority?: number;
+  job_estimated_hours?: string;
+  job_estimated_cost?: string;
+  job_description?: string;
+  job_service_type?: number;
+  garage_id?: number;
+  mechanic_id?: number;
+  status?: number;
+  timer?: string;
+  extra_data?: string;
+  part_name?: string[];
+  part_count?: number[];
+  part_number?: string[];
+  part_description?: string[];
+  part_cost_total?: string[];
+}
+
+/**
+ * Job Part Model
+ */
+export interface JobPart {
+  part_id?: number;
+  job_id?: number;
+  part_name?: string;
+  part_count?: number;
+  part_number?: string;
+  part_description?: string;
+  part_cost_total?: string;
+  created?: string;
+  updated?: string;
+}
+
+/**
+ * Job Model
+ */
+export interface Job {
+  job_id?: number;
+  vehicle_make?: string;
+  vehicle_model?: string;
+  vehicle_year?: string;
+  vehicle_license_plate?: string;
+  vehicle_vin?: string;
+  vehicle_mileage?: string;
+  customer_name?: string;
+  customer_phone_number?: string;
+  customer_email_address?: string;
+  job_type_id?: number;
+  job_priority?: number;
+  job_estimated_hours?: string;
+  job_estimated_cost?: string;
+  job_description?: string;
+  job_service_type?: number;
+  garage_id?: number;
+  mechanic_id?: number;
+  status?: number;
+  timer?: string;
+  extra_data?: string;
+  created?: string;
+  updated?: string;
+  parts?: JobPart[];
+}
+
+/**
+ * Create Job Response
+ */
+export interface CreateJobResponse {
+  data: Job;
+  message: string;
+  status: number;
+}
+
