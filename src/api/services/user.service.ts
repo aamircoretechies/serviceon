@@ -11,6 +11,12 @@ import type {
   CreateUserResponse,
   GetUsersRequest,
   GetUsersResponse,
+  UpdateUserProfileRequest,
+  UpdateUserProfileResponse,
+  ToggleUserStatusRequest,
+  ToggleUserStatusResponse,
+  DeleteUserAccountRequest,
+  DeleteUserAccountResponse,
 } from '../types';
 
 /**
@@ -91,6 +97,77 @@ class UserService {
 
     const response = await apiClient.post<GetUsersResponse>(
       USER_ENDPOINTS.GET_ALL,
+      formData
+    );
+    return response.data;
+  }
+
+  /**
+   * Update user profile
+   * Bearer token required
+   * Uses form-data format for file upload support
+   */
+  async updateProfile(data: UpdateUserProfileRequest): Promise<UpdateUserProfileResponse> {
+    // Create FormData for multipart/form-data request
+    const formData = new FormData();
+    
+    formData.append('user_id', data.user_id.toString());
+    
+    if (data.first_name !== undefined) {
+      formData.append('first_name', data.first_name);
+    }
+    if (data.last_name !== undefined) {
+      formData.append('last_name', data.last_name);
+    }
+    if (data.mobile_number !== undefined) {
+      formData.append('mobile_number', data.mobile_number);
+    }
+    if (data.address1 !== undefined) {
+      formData.append('address1', data.address1);
+    }
+    if (data.profile_image) {
+      formData.append('profile_image', data.profile_image);
+    }
+
+    const response = await apiClient.post<UpdateUserProfileResponse>(
+      USER_ENDPOINTS.UPDATE_PROFILE,
+      formData
+    );
+    return response.data;
+  }
+
+  /**
+   * Toggle user status (enable/disable)
+   * Bearer token required
+   * Uses form-data format
+   */
+  async toggleUserStatus(data: ToggleUserStatusRequest): Promise<ToggleUserStatusResponse> {
+    // Create FormData for multipart/form-data request
+    const formData = new FormData();
+    
+    formData.append('user_id', data.user_id.toString());
+    formData.append('status', data.status.toString());
+
+    const response = await apiClient.post<ToggleUserStatusResponse>(
+      USER_ENDPOINTS.TOGGLE_USER_STATUS,
+      formData
+    );
+    return response.data;
+  }
+
+  /**
+   * Delete user account
+   * Bearer token required
+   * Uses form-data format
+   */
+  async deleteAccount(data: DeleteUserAccountRequest): Promise<DeleteUserAccountResponse> {
+    // Create FormData for multipart/form-data request
+    const formData = new FormData();
+    
+    formData.append('user_id', data.user_id.toString());
+
+    const response = await apiClient.post<DeleteUserAccountResponse>(
+      USER_ENDPOINTS.DELETE_ACCOUNT,
       formData
     );
     return response.data;

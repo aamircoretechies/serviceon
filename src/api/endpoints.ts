@@ -46,6 +46,9 @@ export const GARAGE_ENDPOINTS = {
 export const USER_ENDPOINTS = {
   DIRECT_REGISTRATION: `${API_URL}/users/direct-registration`,
   GET_ALL: `${API_URL}/users/get-all`,
+  UPDATE_PROFILE: `${API_URL}/users/update-profile`,
+  TOGGLE_USER_STATUS: `${API_URL}/users/toggle-user-status`,
+  DELETE_ACCOUNT: `${API_URL}/users/delete-account`,
 } as const;
 
 /**

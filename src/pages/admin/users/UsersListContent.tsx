@@ -1,5 +1,5 @@
 import { Fragment, useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   Plus, 
   Search, 
@@ -45,6 +45,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ConfirmationDialog } from './ConfirmationDialog';
 import { RolePermissionsMatrix } from './RolePermissionsMatrix';
+import { ViewUserModal } from './ViewUserModal';
 import { toast } from 'sonner';
 import { userService } from '@/api/services';
 import type { User as UserType } from '@/api/types';
@@ -63,6 +64,7 @@ interface UIUser {
 }
 
 const UsersListContent = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -84,6 +86,9 @@ const UsersListContent = () => {
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [showPermissionsMatrix, setShowPermissionsMatrix] = useState(false);
   const [users, setUsers] = useState<UIUser[]>([]);
+  const [usersData, setUsersData] = useState<UserType[]>([]); // Store full user data from API
+  const [viewUser, setViewUser] = useState<UserType | null>(null);
+  const [viewUserModalOpen, setViewUserModalOpen] = useState(false);
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -170,6 +175,7 @@ const UsersListContent = () => {
         }));
 
         setUsers(mappedUsers);
+        setUsersData(response.data.content); // Store full user data
         setTotalUsers(response.data.totalElements);
         setTotalPages(response.data.totalPages);
       } else {
@@ -247,8 +253,12 @@ const UsersListContent = () => {
   };
 
   const handleEdit = (userId: number) => {
-    // Navigate to edit user page
-    window.location.href = `/admin/users/edit/${userId}`;
+    // Find the full user data from API response
+    const userData = usersData.find(u => u.user_id === userId);
+    if (userData) {
+      // Navigate to create/edit screen with user data
+      navigate('/admin/users/create', { state: { editUser: userData } });
+    }
   };
 
   const handleDelete = (userId: number) => {
@@ -264,8 +274,12 @@ const UsersListContent = () => {
   };
 
   const handleView = (userId: number) => {
-    // Navigate to user detail page
-    window.location.href = `/admin/users/${userId}`;
+    // Find the full user data from API response
+    const userData = usersData.find(u => u.user_id === userId);
+    if (userData) {
+      setViewUser(userData);
+      setViewUserModalOpen(true);
+    }
   };
 
   const handleToggleStatus = (userId: number, currentStatus: string) => {
@@ -292,24 +306,55 @@ const UsersListContent = () => {
   const handleConfirmAction = async () => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       switch (confirmationDialog.type) {
         case 'delete':
-          toast.success('User deleted successfully');
+          // Call delete API
+          const deleteResponse = await userService.deleteAccount({
+            user_id: confirmationDialog.userId,
+          });
+          if (deleteResponse.status === 1 || deleteResponse.status === 0) {
+            toast.success(deleteResponse.message || 'User deleted successfully');
+            // Refresh users list
+            fetchUsers();
+          } else {
+            toast.error(deleteResponse.message || 'Failed to delete user');
+          }
           break;
         case 'disable':
-          toast.success('User disabled successfully');
+          // Call toggle status API with status 0 (disable)
+          const disableResponse = await userService.toggleUserStatus({
+            user_id: confirmationDialog.userId,
+            status: 0, // 0 to disable
+          });
+          if (disableResponse.status === 1) {
+            toast.success(disableResponse.message || 'User disabled successfully');
+            // Refresh users list
+            fetchUsers();
+          } else {
+            toast.error(disableResponse.message || 'Failed to disable user');
+          }
           break;
         case 'enable':
-          toast.success('User enabled successfully');
+          // Call toggle status API with status 1 (enable)
+          const enableResponse = await userService.toggleUserStatus({
+            user_id: confirmationDialog.userId,
+            status: 1, // 1 to enable
+          });
+          if (enableResponse.status === 1) {
+            toast.success(enableResponse.message || 'User enabled successfully');
+            // Refresh users list
+            fetchUsers();
+          } else {
+            toast.error(enableResponse.message || 'Failed to enable user');
+          }
           break;
       }
       
       setConfirmationDialog({ open: false, type: 'delete', userId: 0, userName: '' });
-    } catch (error) {
-      toast.error('An error occurred. Please try again.');
+    } catch (error: any) {
+      console.error('Error performing action:', error);
+      const errorMessage = error?.response?.data?.message || 'An error occurred. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -403,14 +448,14 @@ const UsersListContent = () => {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Users ({totalUsers})</CardTitle>
-              <Button 
+              {/* <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => setShowPermissionsMatrix(!showPermissionsMatrix)}
               >
                 <Shield className="h-4 w-4 mr-2" />
                 {showPermissionsMatrix ? 'Hide' : 'Show'} Permissions Matrix
-              </Button>
+              </Button> */}
             </div>
           </CardHeader>
           <CardContent>
@@ -488,10 +533,10 @@ const UsersListContent = () => {
                               <Edit className="h-4 w-4 mr-2" />
                               Edit
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleResetPassword(user.id)}>
+                            {/* <DropdownMenuItem onClick={() => handleResetPassword(user.id)}>
                               <Shield className="h-4 w-4 mr-2" />
                               Reset Password
-                            </DropdownMenuItem>
+                            </DropdownMenuItem> */}
                             <DropdownMenuItem 
                               onClick={() => handleToggleStatus(user.id, user.status)}
                               className={user.status === 'active' ? 'text-red-600' : 'text-green-600'}
@@ -580,6 +625,13 @@ const UsersListContent = () => {
           <RolePermissionsMatrix />
         )}
       </div>
+
+      {/* View User Modal */}
+      <ViewUserModal
+        open={viewUserModalOpen}
+        onOpenChange={setViewUserModalOpen}
+        user={viewUser}
+      />
 
       {/* Confirmation Dialog */}
       <ConfirmationDialog

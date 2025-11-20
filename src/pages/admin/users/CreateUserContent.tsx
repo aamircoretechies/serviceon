@@ -1,9 +1,10 @@
 import { Fragment, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Mail, Phone, Shield, Building2 } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, User, Mail, Phone, Shield, Building2, Upload, X, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Select, 
@@ -15,28 +16,37 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { garageService, userService } from '@/api/services';
 import { toast } from 'sonner';
-import type { Garage } from '@/api/types';
+import type { Garage, User as UserType } from '@/api/types';
+import { IMAGES_BASE_URL } from '@/api/config';
 
 const CreateUserContent = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const editUser = location.state?.editUser as UserType | undefined;
+  const isEditMode = !!editUser;
+  
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
+    address: '',
     role: 'mechanic',
     status: 'active',
     assignedGarages: [] as string[],
     sendWelcomeEmail: true,
     requirePasswordChange: false
   });
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
   const [availableGarages, setAvailableGarages] = useState<Garage[]>([]);
   const [isLoadingGarages, setIsLoadingGarages] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch garages on component mount
+  // Fetch garages on component mount and pre-fill form if editing
   useEffect(() => {
     const fetchGarages = async () => {
       setIsLoadingGarages(true);
@@ -56,7 +66,28 @@ const CreateUserContent = () => {
     };
 
     fetchGarages();
-  }, []);
+
+    // Pre-fill form if in edit mode
+    if (editUser) {
+      setFormData({
+        firstName: editUser.first_name || '',
+        lastName: editUser.last_name || '',
+        email: editUser.email || '',
+        phone: editUser.mobile_number || '',
+        address: editUser.address1 || '',
+        role: editUser.user_role === 1 ? 'admin' : editUser.user_role === 2 ? 'mechanic' : 'customer',
+        status: editUser.status === 1 ? 'active' : 'inactive',
+        assignedGarages: [], // Garage assignments not available in user data
+        sendWelcomeEmail: false,
+        requirePasswordChange: false
+      });
+
+      // Set profile image preview if exists
+      if (editUser.profile_image) {
+        setProfileImagePreview(`${IMAGES_BASE_URL}/${editUser.profile_image}`);
+      }
+    }
+  }, [editUser]);
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({
@@ -72,6 +103,23 @@ const CreateUserContent = () => {
         ? [...prev.assignedGarages, garageId]
         : prev.assignedGarages.filter(id => id !== garageId)
     }));
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setProfileImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setProfileImage(null);
+    setProfileImagePreview(editUser?.profile_image ? `${IMAGES_BASE_URL}/${editUser.profile_image}` : null);
   };
 
   /**
@@ -113,7 +161,8 @@ const CreateUserContent = () => {
       return;
     }
 
-    if (formData.assignedGarages.length === 0) {
+    // Only validate garage assignment for new users
+    if (!isEditMode && formData.assignedGarages.length === 0) {
       toast.error('User must be assigned to at least one garage');
       return;
     }
@@ -121,35 +170,55 @@ const CreateUserContent = () => {
     setIsSubmitting(true);
 
     try {
-      // Generate a secure password (will be sent via email if send_welcome_email is true)
-      const password = generatePassword();
+      if (isEditMode && editUser) {
+        // Update user profile
+        const updateResponse = await userService.updateProfile({
+          user_id: editUser.user_id,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          mobile_number: formData.phone || '',
+          address1: formData.address || '',
+          profile_image: profileImage || undefined,
+        });
 
-      // Prepare garage_ids as comma-separated string
-      const garageIds = formData.assignedGarages.join(',');
-
-      // Call the create user API
-      const response = await userService.create({
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        email: formData.email,
-        mobile_number: formData.phone || '',
-        password: password,
-        status: formData.status === 'active' ? 1 : 0,
-        user_role: getRoleNumber(formData.role),
-        send_welcome_email: formData.sendWelcomeEmail ? 1 : 0,
-        require_password_change: formData.requirePasswordChange ? 1 : 0,
-        garage_ids: garageIds,
-      });
-
-      if (response.status === 1) {
-        toast.success(response.message || 'User created successfully');
-        navigate('/admin/users');
+        if (updateResponse.status === 1) {
+          toast.success(updateResponse.message || 'User updated successfully');
+          navigate('/admin/users');
+        } else {
+          toast.error(updateResponse.message || 'Failed to update user');
+        }
       } else {
-        toast.error(response.message || 'Failed to create user');
+        // Create new user
+        // Generate a secure password (will be sent via email if send_welcome_email is true)
+        const password = generatePassword();
+
+        // Prepare garage_ids as comma-separated string
+        const garageIds = formData.assignedGarages.join(',');
+
+        // Call the create user API
+        const response = await userService.create({
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          email: formData.email,
+          mobile_number: formData.phone || '',
+          password: password,
+          status: formData.status === 'active' ? 1 : 0,
+          user_role: getRoleNumber(formData.role),
+          send_welcome_email: formData.sendWelcomeEmail ? 1 : 0,
+          require_password_change: formData.requirePasswordChange ? 1 : 0,
+          garage_ids: garageIds,
+        });
+
+        if (response.status === 1) {
+          toast.success(response.message || 'User created successfully');
+          navigate('/admin/users');
+        } else {
+          toast.error(response.message || 'Failed to create user');
+        }
       }
     } catch (error: any) {
-      console.error('Error creating user:', error);
-      const errorMessage = error?.response?.data?.message || 'Failed to create user';
+      console.error(`Error ${isEditMode ? 'updating' : 'creating'} user:`, error);
+      const errorMessage = error?.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} user`;
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -184,8 +253,12 @@ const CreateUserContent = () => {
             Back to Users
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Add New User</h1>
-            <p className="text-gray-600 dark:text-gray-400">Create a new user account</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              {isEditMode ? 'Edit User' : 'Add New User'}
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              {isEditMode ? 'Update user information and profile' : 'Create a new user account'}
+            </p>
           </div>
         </div>
 
@@ -234,7 +307,11 @@ const CreateUserContent = () => {
                       onChange={(e) => handleInputChange('email', e.target.value)}
                       placeholder="user@serviceon.com"
                       required
+                      disabled={isEditMode} // Email cannot be changed in edit mode
                     />
+                    {isEditMode && (
+                      <p className="text-xs text-gray-500">Email cannot be changed</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -247,6 +324,63 @@ const CreateUserContent = () => {
                       placeholder="(555) 123-4567"
                     />
                   </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="address">Address</Label>
+                    <Textarea
+                      id="address"
+                      value={formData.address}
+                      onChange={(e) => handleInputChange('address', e.target.value)}
+                      placeholder="Enter address"
+                      rows={3}
+                    />
+                  </div>
+
+                  {/* Profile Image Upload - Only in edit mode */}
+                  {isEditMode && (
+                    <div className="space-y-2">
+                      <Label>Profile Image</Label>
+                      {profileImagePreview ? (
+                        <div className="relative">
+                          <Avatar className="h-24 w-24">
+                            <AvatarImage src={profileImagePreview} alt="Profile" />
+                            <AvatarFallback>
+                              <ImageIcon className="h-12 w-12" />
+                            </AvatarFallback>
+                          </Avatar>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            className="absolute top-0 right-0"
+                            onClick={removeImage}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                          <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                          <p className="text-sm text-gray-500">Upload profile image</p>
+                          <p className="text-xs text-gray-400">PNG, JPG up to 2MB</p>
+                        </div>
+                      )}
+                      <div>
+                        <Label htmlFor="profileImage" className="cursor-pointer">
+                          <Button type="button" variant="outline" size="sm" asChild>
+                            <span>Choose File</span>
+                          </Button>
+                        </Label>
+                        <Input
+                          id="profileImage"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageChange}
+                          className="hidden"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -314,19 +448,20 @@ const CreateUserContent = () => {
                 </CardContent>
               </Card>
 
-              {/* Garage Assignment */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
-                    Garage Assignment
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Select which garages this user can access:
-                    </p>
+              {/* Garage Assignment - Only for new users */}
+              {!isEditMode && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Building2 className="h-5 w-5" />
+                      Garage Assignment
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Select which garages this user can access:
+                      </p>
                     {isLoadingGarages ? (
                       <div className="text-sm text-gray-500">Loading garages...</div>
                     ) : availableGarages.length === 0 ? (
@@ -360,9 +495,11 @@ const CreateUserContent = () => {
                   </div>
                 </CardContent>
               </Card>
+              )}
 
-              {/* Account Settings */}
-              <Card>
+              {/* Account Settings - Only for new users */}
+              {!isEditMode && (
+                <Card>
                 <CardHeader>
                   <CardTitle>Account Settings</CardTitle>
                 </CardHeader>
@@ -390,6 +527,7 @@ const CreateUserContent = () => {
                   </div>
                 </CardContent>
               </Card>
+              )}
             </div>
 
             {/* Summary Panel */}
@@ -466,8 +604,13 @@ const CreateUserContent = () => {
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={formData.assignedGarages.length === 0 || isSubmitting}>
-              {isSubmitting ? 'Creating...' : 'Create User'}
+            <Button 
+              type="submit" 
+              disabled={(!isEditMode && formData.assignedGarages.length === 0) || isSubmitting}
+            >
+              {isSubmitting 
+                ? (isEditMode ? 'Updating...' : 'Creating...') 
+                : (isEditMode ? 'Update User' : 'Create User')}
             </Button>
           </div>
         </form>

@@ -414,3 +414,55 @@ export interface GetUsersResponse {
   status: number;
 }
 
+/**
+ * Update User Profile Request
+ */
+export interface UpdateUserProfileRequest {
+  user_id: number;
+  first_name?: string;
+  last_name?: string;
+  mobile_number?: string;
+  address1?: string;
+  profile_image?: File;
+}
+
+/**
+ * Update User Profile Response
+ */
+export interface UpdateUserProfileResponse {
+  data: User;
+  message: string;
+  status: number;
+}
+
+/**
+ * Toggle User Status Request
+ */
+export interface ToggleUserStatusRequest {
+  user_id: number;
+  status: number; // 0 to disable, 1 to enable
+}
+
+/**
+ * Toggle User Status Response
+ */
+export interface ToggleUserStatusResponse {
+  message: string;
+  status: number;
+}
+
+/**
+ * Delete User Account Request
+ */
+export interface DeleteUserAccountRequest {
+  user_id: number;
+}
+
+/**
+ * Delete User Account Response
+ */
+export interface DeleteUserAccountResponse {
+  message: string;
+  status: number;
+}
+
