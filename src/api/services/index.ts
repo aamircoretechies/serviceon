@@ -7,4 +7,5 @@
 export * from './auth.service';
 export * from './timezone.service';
 export * from './garage.service';
+export * from './user.service';
 

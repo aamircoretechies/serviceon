@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Plus, 
@@ -46,11 +46,27 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ConfirmationDialog } from './ConfirmationDialog';
 import { RolePermissionsMatrix } from './RolePermissionsMatrix';
 import { toast } from 'sonner';
+import { userService } from '@/api/services';
+import type { User as UserType } from '@/api/types';
+
+// UI User interface (mapped from API response)
+interface UIUser {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  status: string;
+  lastLogin: string;
+  createdAt: string;
+  avatar: string;
+}
 
 const UsersListContent = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [confirmationDialog, setConfirmationDialog] = useState<{
@@ -65,69 +81,133 @@ const UsersListContent = () => {
     userName: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [showPermissionsMatrix, setShowPermissionsMatrix] = useState(false);
+  const [users, setUsers] = useState<UIUser[]>([]);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
-  // Mock data - replace with actual data
-  const users = [
-    {
-      id: 1,
-      name: 'John Smith',
-      email: 'john.smith@serviceon.com',
-      phone: '(555) 123-4567',
-      role: 'admin',
-      status: 'active',
-      lastLogin: '2024-01-20 10:30 AM',
-      createdAt: '2024-01-15',
-      avatar: '/media/avatars/300-1.png'
-    },
-    {
-      id: 2,
-      name: 'Sarah Johnson',
-      email: 'sarah.johnson@serviceon.com',
-      phone: '(555) 234-5678',
-      role: 'mechanic',
-      status: 'active',
-      lastLogin: '2024-01-19 2:15 PM',
-      createdAt: '2024-01-10',
-      avatar: '/media/avatars/300-2.png'
-    },
-    {
-      id: 3,
-      name: 'Mike Wilson',
-      email: 'mike.wilson@serviceon.com',
-      phone: '(555) 345-6789',
-      role: 'mechanic',
-      status: 'inactive',
-      lastLogin: '2024-01-15 9:45 AM',
-      createdAt: '2024-01-08',
-      avatar: '/media/avatars/300-3.png'
-    },
-    {
-      id: 4,
-      name: 'Lisa Brown',
-      email: 'lisa.brown@serviceon.com',
-      phone: '(555) 456-7890',
-      role: 'customer',
-      status: 'active',
-      lastLogin: '2024-01-18 4:20 PM',
-      createdAt: '2024-01-12',
-      avatar: '/media/avatars/300-4.png'
+  // Fetch users from API
+  const fetchUsers = useCallback(async () => {
+    setIsLoadingUsers(true);
+    try {
+      // Build params object matching Postman format (form-data)
+      const params: any = {
+        page: currentPage - 1, // API uses 0-based pagination
+        size: itemsPerPage,
+      };
+
+      // 1. Search filter: Always send search parameter (as shown in Postman)
+      // Send search text when available, empty string when no search
+      params.search = debouncedSearchTerm ? debouncedSearchTerm.trim() : '';
+
+      // 2. Status filter: Send status parameter only when not "all"
+      // 1 for Enabled (active), 0 for Disabled (inactive)
+      // In Postman, unchecked parameters are not sent
+      if (statusFilter !== 'all') {
+        params.status = statusFilter === 'active' ? 1 : 0;
+      }
+      // When "all" is selected, don't include status in params (will not be sent)
+
+      // 3. Role filter: Send user_role parameter only when not "all"
+      // 1 for Admin, 2 for Technician, 3 for Customer
+      // In Postman, unchecked parameters are not sent
+      if (roleFilter !== 'all') {
+        // Map role string to number: admin=1, mechanic=2, customer=3
+        const roleMap: { [key: string]: number } = {
+          admin: 1,
+          mechanic: 2,
+          customer: 3,
+        };
+        if (roleMap[roleFilter]) {
+          params.user_role = roleMap[roleFilter];
+        }
+      }
+      // When "all" is selected, don't include user_role in params (will not be sent)
+
+      // Debug: Log the params being sent to API
+      console.log('=== API Request Debug ===');
+      console.log('Request Params (will be converted to FormData):', params);
+      console.log('Filter States:', {
+        searchTerm,
+        debouncedSearchTerm,
+        roleFilter,
+        statusFilter,
+        currentPage
+      });
+      console.log('========================');
+
+      const response = await userService.getAll(params);
+
+      if (response.status === 1 && response.data?.content) {
+        // Map role number to string: 1=admin, 2=mechanic, 3=customer
+        const roleNumberToString = (roleNum: number): string => {
+          switch (roleNum) {
+            case 1:
+              return 'admin';
+            case 2:
+              return 'mechanic';
+            case 3:
+              return 'customer';
+            default:
+              return 'mechanic';
+          }
+        };
+
+        // Map API users to UI format
+        const mappedUsers: UIUser[] = response.data.content.map((user: UserType) => ({
+          id: user.user_id,
+          name: `${user.first_name} ${user.last_name}`,
+          email: user.email,
+          phone: user.mobile_number || 'N/A',
+          role: roleNumberToString(user.user_role || 2), // Default to mechanic if not provided
+          status: user.status === 1 ? 'active' : 'inactive',
+          lastLogin: user.last_login_updated 
+            ? new Date(user.last_login_updated).toLocaleString() 
+            : 'Never',
+          createdAt: user.created ? new Date(user.created).toLocaleDateString() : 'N/A',
+          avatar: user.profile_image || `/media/avatars/300-${(user.user_id % 32) + 1}.png`,
+        }));
+
+        setUsers(mappedUsers);
+        setTotalUsers(response.data.totalElements);
+        setTotalPages(response.data.totalPages);
+      } else {
+        toast.error('Failed to load users');
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('Failed to load users');
+    } finally {
+      setIsLoadingUsers(false);
     }
-  ];
+  }, [debouncedSearchTerm, roleFilter, statusFilter, currentPage, itemsPerPage]);
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      // Reset to page 1 when search changes
+      setCurrentPage(1);
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Reset to page 1 when role or status filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [roleFilter, statusFilter]);
+
+  // Fetch users when filters or page change
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   // Pagination
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + itemsPerPage, totalUsers);
+  const paginatedUsers = users;
 
   const getRoleBadge = (role: string) => {
     switch (role) {
@@ -275,7 +355,13 @@ const UsersListContent = () => {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <Select 
+                  value={roleFilter} 
+                  onValueChange={(value) => {
+                    console.log('Role filter changed to:', value);
+                    setRoleFilter(value);
+                  }}
+                >
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="Role" />
                   </SelectTrigger>
@@ -286,7 +372,13 @@ const UsersListContent = () => {
                     <SelectItem value="customer">Customer</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <Select 
+                  value={statusFilter} 
+                  onValueChange={(value) => {
+                    console.log('Status filter changed to:', value);
+                    setStatusFilter(value);
+                  }}
+                >
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
@@ -296,10 +388,11 @@ const UsersListContent = () => {
                     <SelectItem value="inactive">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button variant="outline" className="flex items-center gap-2">
+                {/* More Filters button - commented out as per requirements */}
+                {/* <Button variant="outline" className="flex items-center gap-2">
                   <Filter className="h-4 w-4" />
                   More Filters
-                </Button>
+                </Button> */}
               </div>
             </div>
           </CardContent>
@@ -309,7 +402,7 @@ const UsersListContent = () => {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Users ({filteredUsers.length})</CardTitle>
+              <CardTitle>Users ({totalUsers})</CardTitle>
               <Button 
                 variant="outline" 
                 size="sm"
@@ -321,20 +414,25 @@ const UsersListContent = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Last Login</TableHead>
-                    <TableHead className="w-12"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedUsers.map((user) => (
+            {isLoadingUsers ? (
+              <div className="text-center py-8 text-gray-500">Loading users...</div>
+            ) : paginatedUsers.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">No users found</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Last Login</TableHead>
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedUsers.map((user) => (
                     <TableRow key={user.id} className="sand-hover-row">
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -421,10 +519,11 @@ const UsersListContent = () => {
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -434,7 +533,7 @@ const UsersListContent = () => {
             <CardContent className="py-4">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-500">
-                  Showing {startIndex + 1} to {Math.min(endIndex, filteredUsers.length)} of {filteredUsers.length} users
+                  Showing {startIndex + 1} to {endIndex} of {totalUsers} users
                 </div>
                 <div className="flex items-center gap-2">
                   <Button

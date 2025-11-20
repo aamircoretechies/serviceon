@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Mail, Phone, Shield, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,9 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { garageService, userService } from '@/api/services';
+import { toast } from 'sonner';
+import type { Garage } from '@/api/types';
 
 const CreateUserContent = () => {
   const navigate = useNavigate();
@@ -29,14 +32,31 @@ const CreateUserContent = () => {
     sendWelcomeEmail: true,
     requirePasswordChange: false
   });
+  const [availableGarages, setAvailableGarages] = useState<Garage[]>([]);
+  const [isLoadingGarages, setIsLoadingGarages] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Mock garages - replace with actual data
-  const availableGarages = [
-    { id: '1', name: 'Downtown Auto Service' },
-    { id: '2', name: 'Westside Garage' },
-    { id: '3', name: 'North Point Motors' },
-    { id: '4', name: 'East End Auto' }
-  ];
+  // Fetch garages on component mount
+  useEffect(() => {
+    const fetchGarages = async () => {
+      setIsLoadingGarages(true);
+      try {
+        const response = await garageService.getAll();
+        if (response.status === 1 && response.data?.garages?.content) {
+          setAvailableGarages(response.data.garages.content);
+        } else {
+          toast.error('Failed to load garages');
+        }
+      } catch (error) {
+        console.error('Error fetching garages:', error);
+        toast.error('Failed to load garages');
+      } finally {
+        setIsLoadingGarages(false);
+      }
+    };
+
+    fetchGarages();
+  }, []);
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({
@@ -54,11 +74,86 @@ const CreateUserContent = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  /**
+   * Generate a secure random password
+   */
+  const generatePassword = (): string => {
+    const length = 12;
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+    let password = '';
+    for (let i = 0; i < length; i++) {
+      password += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    return password;
+  };
+
+  /**
+   * Map role string to API role number
+   * 1 for Admin, 2 for Technician (Mechanic), 3 for Customer
+   */
+  const getRoleNumber = (role: string): number => {
+    switch (role) {
+      case 'admin':
+        return 1;
+      case 'mechanic':
+        return 2;
+      case 'customer':
+        return 3;
+      default:
+        return 2; // Default to Technician
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Creating user:', formData);
-    // Implement user creation logic
-    navigate('/admin/users');
+
+    // Validate required fields
+    if (!formData.firstName || !formData.lastName || !formData.email) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    if (formData.assignedGarages.length === 0) {
+      toast.error('User must be assigned to at least one garage');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Generate a secure password (will be sent via email if send_welcome_email is true)
+      const password = generatePassword();
+
+      // Prepare garage_ids as comma-separated string
+      const garageIds = formData.assignedGarages.join(',');
+
+      // Call the create user API
+      const response = await userService.create({
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        email: formData.email,
+        mobile_number: formData.phone || '',
+        password: password,
+        status: formData.status === 'active' ? 1 : 0,
+        user_role: getRoleNumber(formData.role),
+        send_welcome_email: formData.sendWelcomeEmail ? 1 : 0,
+        require_password_change: formData.requirePasswordChange ? 1 : 0,
+        garage_ids: garageIds,
+      });
+
+      if (response.status === 1) {
+        toast.success(response.message || 'User created successfully');
+        navigate('/admin/users');
+      } else {
+        toast.error(response.message || 'Failed to create user');
+      }
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      const errorMessage = error?.response?.data?.message || 'Failed to create user';
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getRoleDescription = (role: string) => {
@@ -232,25 +327,31 @@ const CreateUserContent = () => {
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       Select which garages this user can access:
                     </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {availableGarages.map((garage) => (
-                        <div key={garage.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`garage-${garage.id}`}
-                            checked={formData.assignedGarages.includes(garage.id)}
-                            onCheckedChange={(checked) => 
-                              handleGarageToggle(garage.id, checked as boolean)
-                            }
-                          />
-                          <Label 
-                            htmlFor={`garage-${garage.id}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            {garage.name}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
+                    {isLoadingGarages ? (
+                      <div className="text-sm text-gray-500">Loading garages...</div>
+                    ) : availableGarages.length === 0 ? (
+                      <div className="text-sm text-gray-500">No garages available</div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {availableGarages.map((garage) => (
+                          <div key={garage.garage_id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`garage-${garage.garage_id}`}
+                              checked={formData.assignedGarages.includes(garage.garage_id.toString())}
+                              onCheckedChange={(checked) => 
+                                handleGarageToggle(garage.garage_id.toString(), checked as boolean)
+                              }
+                            />
+                            <Label 
+                              htmlFor={`garage-${garage.garage_id}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              {garage.garage_name}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {formData.assignedGarages.length === 0 && (
                       <p className="text-sm text-yellow-600">
                         ⚠️ User must be assigned to at least one garage
@@ -324,10 +425,10 @@ const CreateUserContent = () => {
                       <div className="mt-1 space-y-1">
                         {formData.assignedGarages.length > 0 ? (
                           formData.assignedGarages.map(garageId => {
-                            const garage = availableGarages.find(g => g.id === garageId);
+                            const garage = availableGarages.find(g => g.garage_id.toString() === garageId);
                             return (
                               <div key={garageId} className="text-xs text-gray-500">
-                                • {garage?.name}
+                                • {garage?.garage_name}
                               </div>
                             );
                           })
@@ -365,8 +466,8 @@ const CreateUserContent = () => {
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={formData.assignedGarages.length === 0}>
-              Create User
+            <Button type="submit" disabled={formData.assignedGarages.length === 0 || isSubmitting}>
+              {isSubmitting ? 'Creating...' : 'Create User'}
             </Button>
           </div>
         </form>

@@ -318,3 +318,99 @@ export interface DeleteGarageResponse {
   status: number;
 }
 
+/**
+ * User Create Request (Direct Registration)
+ */
+export interface CreateUserRequest {
+  first_name: string;
+  last_name: string;
+  email: string;
+  mobile_number: string;
+  password: string;
+  status: number; // 1 for active, 0 for inactive
+  user_role: number; // 1 for Admin, 2 for Technician, 3 for Customer
+  send_welcome_email: number; // 1 for yes, 0 for no
+  require_password_change: number; // 1 for yes, 0 for no
+  garage_ids: string; // Comma-separated garage IDs
+}
+
+/**
+ * User Create Response
+ */
+export interface CreateUserResponse {
+  message: string;
+  status: number;
+}
+
+/**
+ * User Model
+ */
+export interface User {
+  user_id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  email_verified_status: number;
+  mobile_number: string;
+  status: number;
+  created: string;
+  updated: string | null;
+  profile_image: string | null;
+  address1: string | null;
+  is2_fa_enabled: number;
+  last_login_updated: string | null;
+  user_role: number; // 1 for Admin, 2 for Technician, 3 for Customer
+}
+
+/**
+ * Paginated User Content
+ */
+export interface PaginatedUserContent {
+  content: User[];
+  pageable: {
+    pageNumber: number;
+    pageSize: number;
+    sort: {
+      sorted: boolean;
+      empty: boolean;
+      unsorted: boolean;
+    };
+    offset: number;
+    paged: boolean;
+    unpaged: boolean;
+  };
+  last: boolean;
+  totalPages: number;
+  totalElements: number;
+  first: boolean;
+  size: number;
+  number: number;
+  sort: {
+    sorted: boolean;
+    empty: boolean;
+    unsorted: boolean;
+  };
+  numberOfElements: number;
+  empty: boolean;
+}
+
+/**
+ * Get Users Request
+ */
+export interface GetUsersRequest {
+  page?: number;
+  size?: number;
+  search?: string;
+  status?: number | string;
+  user_role?: number | string;
+}
+
+/**
+ * Get Users Response
+ */
+export interface GetUsersResponse {
+  data: PaginatedUserContent;
+  message: string;
+  status: number;
+}
+
