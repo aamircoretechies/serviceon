@@ -466,3 +466,43 @@ export interface DeleteUserAccountResponse {
   status: number;
 }
 
+/**
+ * Job Type Model
+ */
+export interface JobType {
+  job_type_id: number;
+  job_type_name: string;
+  job_type_code: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Get Job Types Response
+ */
+export interface GetJobTypesResponse {
+  data: JobType[];
+  message: string;
+  status: number;
+}
+
+/**
+ * Service Type Model
+ */
+export interface ServiceType {
+  service_type_id: number;
+  service_type_name: string;
+  service_type_code: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Get Service Types Response
+ */
+export interface GetServiceTypesResponse {
+  data: ServiceType[];
+  message: string;
+  status: number;
+}
+

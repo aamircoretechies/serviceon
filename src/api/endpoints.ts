@@ -52,6 +52,20 @@ export const USER_ENDPOINTS = {
 } as const;
 
 /**
+ * Job Type Endpoints
+ */
+export const JOB_TYPE_ENDPOINTS = {
+  GET_ALL: `${API_URL}/job-types/get-all`,
+} as const;
+
+/**
+ * Service Type Endpoints
+ */
+export const SERVICE_TYPE_ENDPOINTS = {
+  GET_ALL: `${API_URL}/service-types/get-all`,
+} as const;
+
+/**
  * Export all endpoints for easy access
  * Additional endpoints will be added here as we integrate features
  */
@@ -60,6 +74,8 @@ export const API_ENDPOINTS = {
   TIMEZONE: TIMEZONE_ENDPOINTS,
   GARAGE: GARAGE_ENDPOINTS,
   USER: USER_ENDPOINTS,
+  JOB_TYPE: JOB_TYPE_ENDPOINTS,
+  SERVICE_TYPE: SERVICE_TYPE_ENDPOINTS,
   // Additional endpoints will be added here incrementally
 } as const;
 

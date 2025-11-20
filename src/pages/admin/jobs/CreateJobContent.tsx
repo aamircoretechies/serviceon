@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -20,6 +20,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { garageService, userService, jobTypeService, serviceTypeService } from '@/api/services';
+import { toast } from 'sonner';
+import type { Garage, User as UserType, JobType, ServiceType } from '@/api/types';
 
 const CreateJobContent = () => {
   const navigate = useNavigate();
@@ -39,7 +42,7 @@ const CreateJobContent = () => {
     
     // Job Information
     jobType: '',
-    priority: 'medium',
+    priority: '2', // Default to Medium (2)
     description: '',
     estimatedHours: '',
     estimatedCost: '',
@@ -56,45 +59,99 @@ const CreateJobContent = () => {
   const [newService, setNewService] = useState('');
   const [newPart, setNewPart] = useState({ name: '', quantity: 1, cost: 0 });
 
-  // Mock data - replace with actual data
-  const garages = [
-    { id: '1', name: 'Downtown Auto Service' },
-    { id: '2', name: 'Westside Garage' },
-    { id: '3', name: 'North Point Motors' },
-    { id: '4', name: 'Central Auto' },
-    { id: '5', name: 'Eastside Garage' }
-  ];
+  // API data
+  const [garages, setGarages] = useState<Garage[]>([]);
+  const [mechanics, setMechanics] = useState<UserType[]>([]);
+  const [jobTypes, setJobTypes] = useState<JobType[]>([]);
+  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
+  const [isLoadingGarages, setIsLoadingGarages] = useState(false);
+  const [isLoadingMechanics, setIsLoadingMechanics] = useState(false);
+  const [isLoadingJobTypes, setIsLoadingJobTypes] = useState(false);
+  const [isLoadingServiceTypes, setIsLoadingServiceTypes] = useState(false);
 
-  const mechanics = [
-    { id: '1', name: 'Mike Wilson' },
-    { id: '2', name: 'Sarah Johnson' },
-    { id: '3', name: 'David Lee' },
-    { id: '4', name: 'Lisa Chen' }
-  ];
+  // Fetch garages from API
+  useEffect(() => {
+    const fetchGarages = async () => {
+      setIsLoadingGarages(true);
+      try {
+        const response = await garageService.getAll();
+        if (response.status === 1 && response.data?.garages?.content) {
+          setGarages(response.data.garages.content);
+        } else {
+          toast.error('Failed to load garages');
+        }
+      } catch (error) {
+        console.error('Error fetching garages:', error);
+        toast.error('Failed to load garages');
+      } finally {
+        setIsLoadingGarages(false);
+      }
+    };
 
-  const jobTypes = [
-    'Oil Change',
-    'Brake Service',
-    'Engine Repair',
-    'Transmission Service',
-    'Tire Service',
-    'Electrical Repair',
-    'AC Service',
-    'General Maintenance',
-    'Diagnostic',
-    'Other'
-  ];
+    fetchGarages();
+  }, []);
 
-  const serviceOptions = [
-    'Oil Change',
-    'Filter Replacement',
-    'Brake Inspection',
-    'Tire Rotation',
-    'Battery Check',
-    'Fluid Top-up',
-    'Diagnostic Scan',
-    'Safety Inspection'
-  ];
+  // Fetch mechanics (users with user_role = 2) from API
+  useEffect(() => {
+    const fetchMechanics = async () => {
+      setIsLoadingMechanics(true);
+      try {
+        const response = await userService.getAll({
+          page: 0,
+          size: 1000, // Get all mechanics
+          user_role: 2, // Filter for mechanics only
+        });
+        if (response.status === 1 && response.data?.content) {
+          setMechanics(response.data.content);
+        } else {
+          toast.error('Failed to load mechanics');
+        }
+      } catch (error) {
+        console.error('Error fetching mechanics:', error);
+        toast.error('Failed to load mechanics');
+      } finally {
+        setIsLoadingMechanics(false);
+      }
+    };
+
+    fetchMechanics();
+  }, []);
+
+  // Fetch job types from API
+  useEffect(() => {
+    const fetchJobTypes = async () => {
+      setIsLoadingJobTypes(true);
+      try {
+        const jobTypesData = await jobTypeService.getAll();
+        setJobTypes(jobTypesData);
+      } catch (error) {
+        console.error('Error fetching job types:', error);
+        toast.error('Failed to load job types');
+      } finally {
+        setIsLoadingJobTypes(false);
+      }
+    };
+
+    fetchJobTypes();
+  }, []);
+
+  // Fetch service types from API
+  useEffect(() => {
+    const fetchServiceTypes = async () => {
+      setIsLoadingServiceTypes(true);
+      try {
+        const serviceTypesData = await serviceTypeService.getAll();
+        setServiceTypes(serviceTypesData);
+      } catch (error) {
+        console.error('Error fetching service types:', error);
+        toast.error('Failed to load service types');
+      } finally {
+        setIsLoadingServiceTypes(false);
+      }
+    };
+
+    fetchServiceTypes();
+  }, []);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -144,11 +201,11 @@ const CreateJobContent = () => {
 
   const getPriorityBadge = (priority: string) => {
     switch (priority) {
-      case 'low':
+      case '1':
         return <Badge variant="outline" className="text-green-600 border-green-600">Low</Badge>;
-      case 'medium':
+      case '2':
         return <Badge variant="outline" className="text-yellow-600 border-yellow-600">Medium</Badge>;
-      case 'high':
+      case '3':
         return <Badge variant="outline" className="text-red-600 border-red-600">High</Badge>;
       default:
         return <Badge variant="outline">Medium</Badge>;
@@ -306,14 +363,18 @@ const CreateJobContent = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="jobType">Job Type *</Label>
-                      <Select value={formData.jobType} onValueChange={(value) => handleInputChange('jobType', value)}>
+                      <Select 
+                        value={formData.jobType} 
+                        onValueChange={(value) => handleInputChange('jobType', value)}
+                        disabled={isLoadingJobTypes}
+                      >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select job type" />
+                          <SelectValue placeholder={isLoadingJobTypes ? "Loading..." : "Select job type"} />
                         </SelectTrigger>
                         <SelectContent>
                           {jobTypes.map((type) => (
-                            <SelectItem key={type} value={type}>
-                              {type}
+                            <SelectItem key={type.job_type_id} value={type.job_type_id.toString()}>
+                              {type.job_type_name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -326,9 +387,9 @@ const CreateJobContent = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="1">Low</SelectItem>
+                          <SelectItem value="2">Medium</SelectItem>
+                          <SelectItem value="3">High</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -375,14 +436,18 @@ const CreateJobContent = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex gap-2">
-                    <Select value={newService} onValueChange={setNewService}>
+                    <Select 
+                      value={newService} 
+                      onValueChange={setNewService}
+                      disabled={isLoadingServiceTypes}
+                    >
                       <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select service" />
+                        <SelectValue placeholder={isLoadingServiceTypes ? "Loading..." : "Select service"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {serviceOptions.map((service) => (
-                          <SelectItem key={service} value={service}>
-                            {service}
+                        {serviceTypes.map((service) => (
+                          <SelectItem key={service.service_type_id} value={service.service_type_id.toString()}>
+                            {service.service_type_name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -396,20 +461,23 @@ const CreateJobContent = () => {
                     <div className="space-y-2">
                       <Label>Selected Services</Label>
                       <div className="flex flex-wrap gap-2">
-                        {formData.services.map((service) => (
-                          <Badge key={service} variant="outline" className="flex items-center gap-1">
-                            {service}
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoveService(service)}
-                              className="h-4 w-4 p-0 hover:bg-transparent"
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </Badge>
-                        ))}
+                        {formData.services.map((serviceId) => {
+                          const service = serviceTypes.find(s => s.service_type_id.toString() === serviceId);
+                          return (
+                            <Badge key={serviceId} variant="outline" className="flex items-center gap-1">
+                              {service?.service_type_name || serviceId}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveService(serviceId)}
+                                className="h-4 w-4 p-0 hover:bg-transparent"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </Badge>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -426,27 +494,39 @@ const CreateJobContent = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <Input
-                      placeholder="Part name"
-                      value={newPart.name}
-                      onChange={(e) => setNewPart(prev => ({ ...prev, name: e.target.value }))}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Quantity"
-                      value={newPart.quantity}
-                      onChange={(e) => setNewPart(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
-                    />
-                    <div className="flex gap-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="partName" className="text-sm">Part Name</Label>
                       <Input
-                        type="number"
-                        placeholder="Cost"
-                        value={newPart.cost}
-                        onChange={(e) => setNewPart(prev => ({ ...prev, cost: parseFloat(e.target.value) || 0 }))}
+                        id="partName"
+                        placeholder="Part name"
+                        value={newPart.name}
+                        onChange={(e) => setNewPart(prev => ({ ...prev, name: e.target.value }))}
                       />
-                      <Button type="button" onClick={handleAddPart} disabled={!newPart.name}>
-                        <Plus className="h-4 w-4" />
-                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="partQuantity" className="text-sm">Part Quantity</Label>
+                      <Input
+                        id="partQuantity"
+                        type="number"
+                        placeholder="Quantity"
+                        value={newPart.quantity}
+                        onChange={(e) => setNewPart(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="partCost" className="text-sm">Part Cost</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="partCost"
+                          type="number"
+                          placeholder="Cost"
+                          value={newPart.cost}
+                          onChange={(e) => setNewPart(prev => ({ ...prev, cost: parseFloat(e.target.value) || 0 }))}
+                        />
+                        <Button type="button" onClick={handleAddPart} disabled={!newPart.name}>
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                   
@@ -492,14 +572,18 @@ const CreateJobContent = () => {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="assignedGarage">Garage *</Label>
-                    <Select value={formData.assignedGarage} onValueChange={(value) => handleInputChange('assignedGarage', value)}>
+                    <Select 
+                      value={formData.assignedGarage} 
+                      onValueChange={(value) => handleInputChange('assignedGarage', value)}
+                      disabled={isLoadingGarages}
+                    >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select garage" />
+                        <SelectValue placeholder={isLoadingGarages ? "Loading..." : "Select garage"} />
                       </SelectTrigger>
                       <SelectContent>
                         {garages.map((garage) => (
-                          <SelectItem key={garage.id} value={garage.id}>
-                            {garage.name}
+                          <SelectItem key={garage.garage_id} value={garage.garage_id.toString()}>
+                            {garage.garage_name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -507,14 +591,18 @@ const CreateJobContent = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="assignedMechanic">Mechanic</Label>
-                    <Select value={formData.assignedMechanic} onValueChange={(value) => handleInputChange('assignedMechanic', value)}>
+                    <Select 
+                      value={formData.assignedMechanic} 
+                      onValueChange={(value) => handleInputChange('assignedMechanic', value)}
+                      disabled={isLoadingMechanics}
+                    >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select mechanic" />
+                        <SelectValue placeholder={isLoadingMechanics ? "Loading..." : "Select mechanic"} />
                       </SelectTrigger>
                       <SelectContent>
                         {mechanics.map((mechanic) => (
-                          <SelectItem key={mechanic.id} value={mechanic.id}>
-                            {mechanic.name}
+                          <SelectItem key={mechanic.user_id} value={mechanic.user_id.toString()}>
+                            {mechanic.first_name} {mechanic.last_name}
                           </SelectItem>
                         ))}
                       </SelectContent>
