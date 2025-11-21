@@ -17,7 +17,9 @@ import {
   CheckCircle,
   AlertCircle,
   Download,
-  FileText
+  FileText,
+  Delete,
+  DeleteIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +31,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { JobDetailsDrawer } from './JobDetailsDrawer';
 import { AssignMechanicDialog } from './AssignMechanicDialog';
+import { UpdateJobStatusDialog } from './UpdateJobStatusDialog';
 import { jobService, garageService, userService } from '@/api/services';
 import { toast } from 'sonner';
 import type { JobWithParts, Garage, User as UserType } from '@/api/types';
@@ -42,6 +45,7 @@ const JobsListContent = () => {
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [showJobDetails, setShowJobDetails] = useState(false);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [showStatusDialog, setShowStatusDialog] = useState(false);
   
   // API data states
   const [jobs, setJobs] = useState<JobWithParts[]>([]);
@@ -207,8 +211,12 @@ const JobsListContent = () => {
       const params: any = {
         page_number: currentPage,
         page_size: pageSize,
-        search: searchTerm || '', // Always send search, even if empty
       };
+
+      // Only add search if there's a search term
+      if (searchTerm && searchTerm.trim() !== '') {
+        params.search = searchTerm.trim();
+      }
 
       // Only add filters if they're not "all"
       if (garageFilter !== 'all') {
@@ -225,8 +233,11 @@ const JobsListContent = () => {
       console.log('Fetching jobs with params:', params);
       const response = await jobService.getAll(params);
       console.log('Jobs API response:', response);
+      console.log('Jobs array from API:', response.data?.jobs);
+      console.log('Jobs array length:', response.data?.jobs?.length);
 
       if (response.status === 1 && response.data?.jobs) {
+        console.log('Setting jobs state with', response.data.jobs.length, 'jobs');
         setJobs(response.data.jobs);
         setTotalElements(response.data.total_elements);
         setTotalPages(response.data.total_pages);
@@ -248,32 +259,38 @@ const JobsListContent = () => {
   }, [fetchJobs]);
 
   // Map API job data to UI format
-  const mapJobToUI = (job: JobWithParts) => {
-    const garage = garages.find(g => g.garage_id === job.garage_id);
-    const mechanic = mechanics.find(m => m.user_id === job.mechanic_id);
-    
-    // Map status: 1=Complete, 2=Pending, 3=In progress, 4=onHold, 5=cancelled
-    const statusMap: { [key: number]: string } = {
-      1: 'completed',
-      2: 'pending',
-      3: 'in-progress',
-      4: 'on-hold',
-      5: 'cancelled',
-    };
-    
-    const status = statusMap[job.status || 2] || 'pending';
-    
-    // Parse timer
-    const timerValue = job.timer || '00:00:00';
-    const timer = {
-      status: timerValue === '00:00:00' ? 'stopped' : 'running',
-      elapsed: timerValue,
-      started: job.created || null,
-    };
+  const mapJobToUI = (job: JobWithParts, index: number) => {
+    try {
+      if (!job || !job.job_id) {
+        console.error('Invalid job data at index', index, ':', job);
+        return null;
+      }
+      
+      const garage = garages.find(g => g.garage_id === job.garage_id);
+      const mechanic = mechanics.find(m => m.user_id === job.mechanic_id);
+      
+      // Map status: 1=Complete, 2=Pending, 3=In progress, 4=onHold, 5=cancelled
+      const statusMap: { [key: number]: string } = {
+        1: 'completed',
+        2: 'pending',
+        3: 'in-progress',
+        4: 'on-hold',
+        5: 'cancelled',
+      };
+      
+      const status = statusMap[job.status || 2] || 'pending';
+      
+      // Parse timer - handle null case explicitly
+      const timerValue = job.timer === null || job.timer === undefined ? '00:00:00' : job.timer;
+      const timer = {
+        status: timerValue === '00:00:00' ? 'stopped' : 'running',
+        elapsed: timerValue,
+        started: job.created || null,
+      };
 
-    return {
-      id: `JOB-${String(job.job_id).padStart(3, '0')}`,
-      job_id: job.job_id,
+      return {
+        id: `JOB-${String(job.job_id).padStart(3, '0')}`,
+        job_id: job.job_id,
       vehicle: {
         make: job.vehicle_make || '',
         model: job.vehicle_model || '',
@@ -301,10 +318,19 @@ const JobsListContent = () => {
       })),
       createdAt: job.created || '',
       estimatedCompletion: job.job_estimated_hours || '',
-    };
+      };
+    } catch (error) {
+      console.error('Error mapping job at index', index, ':', error, job);
+      return null;
+    }
   };
 
-  const uiJobs = jobs.map(mapJobToUI);
+  console.log('Jobs state:', jobs);
+  console.log('Jobs state length:', jobs.length);
+  
+  const uiJobs = jobs.map((job, index) => mapJobToUI(job, index)).filter(job => job !== null);
+  console.log('UI Jobs after mapping:', uiJobs);
+  console.log('UI Jobs length:', uiJobs.length);
   
   // Filter for unassigned mechanic if needed
   const filteredJobs = uiJobs.filter(job => {
@@ -313,6 +339,9 @@ const JobsListContent = () => {
     }
     return true; // API already filters, just return all
   });
+  
+  console.log('Filtered Jobs:', filteredJobs);
+  console.log('Filtered Jobs length:', filteredJobs.length);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -360,7 +389,15 @@ const JobsListContent = () => {
   };
 
   const handleViewJob = (job: any) => {
-    navigate(`/admin/jobs/${job.job_id || job.id}`);
+    // Find the original job data from API
+    const originalJob = jobs.find(j => j.job_id === job.job_id);
+    if (originalJob) {
+      navigate(`/admin/jobs/${job.job_id || job.id}`, {
+        state: { jobData: originalJob }
+      });
+    } else {
+      navigate(`/admin/jobs/${job.job_id || job.id}`);
+    }
   };
 
   const handleAssignMechanic = (job: any) => {
@@ -368,9 +405,95 @@ const JobsListContent = () => {
     setShowAssignDialog(true);
   };
 
-  const handleTimerAction = (job: any, action: string) => {
-    // Handle timer actions (start, pause, stop)
-    console.log(`Timer ${action} for job ${job.id}`);
+  const handleTimerAction = async (job: any, action: string) => {
+    const jobId = job.job_id || job.id;
+    if (!jobId) {
+      toast.error('Job ID not found');
+      return;
+    }
+
+    try {
+      if (action === 'start') {
+        const response = await jobService.startTimer({ job_id: jobId });
+        if (response.status === 1) {
+          toast.success(response.message || 'Timer started successfully');
+          // Refresh jobs list
+          fetchJobs();
+        } else {
+          toast.error(response.message || 'Failed to start timer');
+        }
+      } else if (action === 'stop') {
+        const response = await jobService.stopTimer({ job_id: jobId });
+        if (response.status === 1) {
+          toast.success(response.message || 'Timer stopped successfully');
+          // Refresh jobs list
+          fetchJobs();
+        } else {
+          toast.error(response.message || 'Failed to stop timer');
+        }
+      }
+    } catch (error: any) {
+      console.error(`Error ${action}ing timer:`, error);
+      const errorMessage = error?.response?.data?.message || error?.message || `Failed to ${action} timer`;
+      toast.error(errorMessage);
+    }
+  };
+
+  const handleUpdateStatus = async (jobId: number, status: number) => {
+    try {
+      const response = await jobService.updateStatus({ job_id: jobId, status });
+      if (response.status === 1) {
+        toast.success(response.message || 'Job status updated successfully');
+        // Refresh jobs list
+        fetchJobs();
+      } else {
+        toast.error(response.message || 'Failed to update job status');
+      }
+    } catch (error: any) {
+      console.error('Error updating job status:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to update job status';
+      toast.error(errorMessage);
+    }
+  };
+
+  const handleDeleteJob = async (job: any) => {
+    const jobId = job.job_id || job.id;
+    if (!jobId) {
+      toast.error('Job ID not found');
+      return;
+    }
+
+    // Confirm deletion
+    if (!window.confirm(`Are you sure you want to delete job ${job.id || `JOB-${jobId}`}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await jobService.delete({ job_id: jobId });
+      if (response.status === 1) {
+        toast.success(response.message || 'Job deleted successfully');
+        // Refresh jobs list
+        fetchJobs();
+      } else {
+        toast.error(response.message || 'Failed to delete job');
+      }
+    } catch (error: any) {
+      console.error('Error deleting job:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to delete job';
+      toast.error(errorMessage);
+    }
+  };
+
+  const handleUpdateJob = (job: any) => {
+    // Find the original job data from API
+    const originalJob = jobs.find(j => j.job_id === job.job_id);
+    if (originalJob) {
+      navigate(`/admin/jobs/update/${job.job_id || job.id}`, {
+        state: { jobData: originalJob }
+      });
+    } else {
+      navigate(`/admin/jobs/update/${job.job_id || job.id}`);
+    }
   };
 
   // Check if any filters are active
@@ -610,21 +733,47 @@ const JobsListContent = () => {
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleAssignMechanic(job)}>
+                            {/* <DropdownMenuItem onClick={() => handleAssignMechanic(job)}>
                               <User className="h-4 w-4 mr-2" />
                               Assign Mechanic
-                            </DropdownMenuItem>
+                            </DropdownMenuItem> */}
                             <DropdownMenuItem onClick={() => handleTimerAction(job, 'start')}>
                               <Play className="h-4 w-4 mr-2" />
                               Start Timer
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleTimerAction(job, 'pause')}>
+                            {/* <DropdownMenuItem onClick={() => handleTimerAction(job, 'pause')}>
                               <Pause className="h-4 w-4 mr-2" />
                               Pause Timer
-                            </DropdownMenuItem>
+                            </DropdownMenuItem> */}
                             <DropdownMenuItem onClick={() => handleTimerAction(job, 'stop')}>
                               <Square className="h-4 w-4 mr-2" />
                               Stop Timer
+                            </DropdownMenuItem>
+
+                            {/* <DropdownMenuItem onClick={() => handleTimerAction(job, 'update-job')}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Update Job
+                            </DropdownMenuItem> */}
+
+                            <DropdownMenuItem onClick={() => {
+                              setSelectedJob(job);
+                              setShowStatusDialog(true);
+                            }}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Update Job Status
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem onClick={() => handleUpdateJob(job)}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Update Job
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteJob(job)}
+                              className="text-red-600 dark:text-red-400"
+                            >
+                              <DeleteIcon className="h-4 w-4 mr-2" />
+                              Delete Job
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -739,6 +888,19 @@ const JobsListContent = () => {
           open={showAssignDialog}
           onClose={() => setShowAssignDialog(false)}
           mechanics={mechanics}
+        />
+      )}
+
+      {/* Update Job Status Dialog */}
+      {showStatusDialog && selectedJob && (
+        <UpdateJobStatusDialog
+          job={selectedJob}
+          open={showStatusDialog}
+          onClose={() => {
+            setShowStatusDialog(false);
+            setSelectedJob(null);
+          }}
+          onUpdate={handleUpdateStatus}
         />
       )}
     </Fragment>

@@ -1,5 +1,5 @@
-import { Fragment, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Fragment, useState, useEffect, useMemo } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Car, 
@@ -29,84 +29,260 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, Tab, TabPanel } from '@/components/tabs';
+import { jobService, garageService, userService, jobTypeService, serviceTypeService } from '@/api/services';
+import { toast } from 'sonner';
+import type { JobWithParts, Garage, User as UserType, JobType, ServiceType } from '@/api/types';
 
 const JobDetailsContent = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('overview');
+  const [isLoading, setIsLoading] = useState(false);
+  const [jobData, setJobData] = useState<JobWithParts | null>(null);
+  const [garage, setGarage] = useState<Garage | null>(null);
+  const [mechanic, setMechanic] = useState<UserType | null>(null);
+  const [jobType, setJobType] = useState<JobType | null>(null);
+  const [serviceType, setServiceType] = useState<ServiceType | null>(null);
 
-  // Mock job data - replace with actual data fetching
-  const job = {
-    id: id || 'JOB-001',
+  // Get job data from navigation state or fetch from API
+  useEffect(() => {
+    const fetchJobData = async () => {
+      setIsLoading(true);
+      try {
+        // First, try to get from navigation state
+        const stateJobData = location.state?.jobData as JobWithParts | undefined;
+        
+        if (stateJobData) {
+          console.log('Job data from state:', stateJobData);
+          console.log('Job parts from state:', stateJobData.job_parts);
+          setJobData(stateJobData);
+        } else {
+          // If not in state, fetch from API using the job ID from URL
+          // For now, we'll need to fetch all jobs and find the one with matching ID
+          // TODO: Add a GET job by ID endpoint if available
+          const response = await jobService.getAll({ page_number: 0, page_size: 1000 });
+          if (response.status === 1 && response.data?.jobs) {
+            const jobId = parseInt(id || '0');
+            const foundJob = response.data.jobs.find(j => j.job_id === jobId);
+            if (foundJob) {
+              console.log('Job data from API:', foundJob);
+              console.log('Job parts from API:', foundJob.job_parts);
+              setJobData(foundJob);
+            } else {
+              toast.error('Job not found');
+              navigate('/admin/jobs');
+            }
+          }
+        }
+      } catch (error: any) {
+        console.error('Error fetching job data:', error);
+        toast.error('Failed to load job details');
+        navigate('/admin/jobs');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (id) {
+      fetchJobData();
+    }
+  }, [id, location.state, navigate]);
+
+  // Fetch related data (garage, mechanic, job type, service type)
+  useEffect(() => {
+    const fetchRelatedData = async () => {
+      if (!jobData) return;
+
+      try {
+        // Fetch garage
+        if (jobData.garage_id) {
+          const garagesResponse = await garageService.getAll();
+          if (garagesResponse.status === 1 && garagesResponse.data?.garages?.content) {
+            const foundGarage = garagesResponse.data.garages.content.find(
+              g => g.garage_id === jobData.garage_id
+            );
+            if (foundGarage) setGarage(foundGarage);
+          }
+        }
+
+        // Fetch mechanic
+        if (jobData.mechanic_id) {
+          const mechanicsResponse = await userService.getAll({
+            page: 0,
+            size: 1000,
+            user_role: 2,
+          });
+          if (mechanicsResponse.status === 1 && mechanicsResponse.data?.content) {
+            const foundMechanic = mechanicsResponse.data.content.find(
+              m => m.user_id === jobData.mechanic_id
+            );
+            if (foundMechanic) setMechanic(foundMechanic);
+          }
+        }
+
+        // Fetch job type
+        if (jobData.job_type_id) {
+          const jobTypes = await jobTypeService.getAll();
+          const foundJobType = jobTypes.find(jt => jt.job_type_id === jobData.job_type_id);
+          if (foundJobType) setJobType(foundJobType);
+        }
+
+        // Fetch service type
+        if (jobData.job_service_type !== null && jobData.job_service_type !== undefined) {
+          console.log('Fetching service type for job_service_type:', jobData.job_service_type);
+          const serviceTypes = await serviceTypeService.getAll();
+          console.log('All service types:', serviceTypes);
+          const foundServiceType = serviceTypes.find(st => st.service_type_id === jobData.job_service_type);
+          console.log('Found service type:', foundServiceType);
+          if (foundServiceType) {
+            setServiceType(foundServiceType);
+          } else {
+            console.warn('Service type not found for job_service_type:', jobData.job_service_type);
+          }
+        } else {
+          console.log('No service type (job_service_type is null/undefined)');
+        }
+      } catch (error) {
+        console.error('Error fetching related data:', error);
+      }
+    };
+
+    fetchRelatedData();
+  }, [jobData]);
+
+  // Map status: 1=Complete, 2=Pending, 3=In progress, 4=onHold, 5=cancelled
+  const statusMap: { [key: number]: string } = {
+    1: 'completed',
+    2: 'pending',
+    3: 'in-progress',
+    4: 'on-hold',
+    5: 'cancelled',
+  };
+
+  // Map priority: 1=Low, 2=Medium, 3=High
+  const priorityMap: { [key: number]: string } = {
+    1: 'low',
+    2: 'medium',
+    3: 'high',
+  };
+
+  // Calculate progress based on status
+  const calculateProgress = (status: number | undefined): number => {
+    switch (status) {
+      case 1: return 100; // Completed
+      case 3: return 50;  // In Progress
+      case 4: return 25;  // On Hold
+      case 5: return 0;   // Cancelled
+      default: return 0; // Pending
+    }
+  };
+
+  // Calculate total parts cost
+  const calculatePartsCost = (parts: any[] | undefined): number => {
+    if (!parts || parts.length === 0) return 0;
+    return parts.reduce((total, part) => {
+      const cost = parseFloat(part.part_cost_total || '0');
+      return total + cost;
+    }, 0);
+  };
+
+  // Map API data to UI format - use useMemo to recalculate when dependencies change
+  const job = useMemo(() => {
+    if (!jobData) return null;
+    
+    return {
+    id: `JOB-${String(jobData.job_id).padStart(3, '0')}`,
+    job_id: jobData.job_id,
     vehicle: {
-      make: 'Toyota',
-      model: 'Camry',
-      year: '2020',
-      plate: 'ABC-1234',
-      vin: '1HGBH41JXMN109186',
-      mileage: '45,000'
+      make: jobData.vehicle_make || '',
+      model: jobData.vehicle_model || '',
+      year: jobData.vehicle_year || '',
+      plate: jobData.vehicle_license_plate || '',
+      vin: jobData.vehicle_vin || '',
+      mileage: jobData.vehicle_mileage || '0'
     },
     customer: {
-      name: 'John Doe',
-      phone: '(555) 123-4567',
-      email: 'john.doe@example.com',
-      address: '123 Main St, Anytown, ST 12345'
+      name: jobData.customer_name || '',
+      phone: jobData.customer_phone_number || '',
+      email: jobData.customer_email_address || '',
+      address: '' // Not available in API
     },
     garage: {
-      id: '1',
-      name: 'Downtown Auto Service',
-      address: '123 Main St, Downtown',
-      phone: '(555) 987-6543'
+      id: garage?.garage_id?.toString() || '',
+      name: garage?.garage_name || 'Unknown Garage',
+      address: garage ? `${garage.garage_street_address || ''}, ${garage.garage_city || ''}`.trim() : '',
+      phone: garage?.garage_phone_number || ''
     },
-    assignedMechanic: {
-      id: '1',
-      name: 'Mike Wilson',
+    assignedMechanic: mechanic ? {
+      id: mechanic.user_id?.toString() || '',
+      name: `${mechanic.first_name || ''} ${mechanic.last_name || ''}`.trim(),
       avatar: '/media/avatars/300-3.png',
-      phone: '(555) 234-5678'
-    },
-    status: 'in-progress',
-    priority: 'medium',
-    progress: 65,
+      phone: mechanic.mobile_number || ''
+    } : null,
+    status: statusMap[jobData.status || 2] || 'pending',
+    priority: priorityMap[jobData.job_priority || 2] || 'medium',
+    progress: calculateProgress(jobData.status),
     timer: {
-      status: 'running',
-      elapsed: '02:45:30',
-      started: '2024-01-20 09:30:00'
+      status: (jobData.timer && jobData.timer !== '00:00:00') ? 'running' : 'stopped',
+      elapsed: jobData.timer || '00:00:00',
+      started: jobData.created || null
     },
-    jobType: 'Brake Service',
-    description: 'Complete brake inspection and pad replacement for front and rear brakes. Check brake fluid levels and condition.',
-    estimatedHours: '3.5',
-    estimatedCost: '285.00',
-    actualHours: '2.5',
-    actualCost: '0.00',
-    createdAt: '2024-01-20 09:00:00',
-    estimatedCompletion: '2024-01-20 15:00:00',
-    completedAt: null,
-    services: [
-      'Brake Inspection',
-      'Brake Pad Replacement',
-      'Brake Fluid Check',
-      'Safety Inspection'
-    ],
-    parts: [
-      { name: 'Front Brake Pads', quantity: 2, cost: 45.00, status: 'delivered' },
-      { name: 'Rear Brake Pads', quantity: 2, cost: 40.00, status: 'delivered' },
-      { name: 'Brake Fluid', quantity: 1, cost: 12.00, status: 'delivered' }
-    ],
-    notes: [
-      {
-        id: 1,
-        text: 'Customer mentioned squeaking noise when braking',
-        author: 'Mike Wilson',
-        timestamp: '2024-01-20 09:15:00'
-      },
-      {
-        id: 2,
-        text: 'Front brake pads are worn down to 2mm - replacement needed',
-        author: 'Mike Wilson',
-        timestamp: '2024-01-20 10:30:00'
+    jobType: jobType?.job_type_name || 'Unknown',
+    description: jobData.job_description || '',
+    estimatedHours: jobData.job_estimated_hours || '0',
+    estimatedCost: jobData.job_estimated_cost || '0',
+    actualHours: '0', // Not available in API
+    actualCost: calculatePartsCost(jobData.job_parts).toFixed(2),
+    createdAt: jobData.created || '',
+    estimatedCompletion: jobData.job_estimated_hours || '', // Use estimated hours as completion time
+    completedAt: jobData.status === 1 ? jobData.updated : null,
+    services: (() => {
+      console.log('Mapping services - serviceType:', serviceType);
+      console.log('jobData.job_service_type:', jobData.job_service_type);
+      if (serviceType && serviceType.service_type_name) {
+        return [serviceType.service_type_name];
       }
-    ]
-  };
+      return [];
+    })(),
+    parts: (() => {
+      console.log('Mapping parts, jobData.job_parts:', jobData.job_parts);
+      const partsArray = jobData.job_parts || [];
+      console.log('Parts array length:', partsArray.length);
+      return partsArray.map(part => {
+        console.log('Mapping part:', part);
+        return {
+          name: part.part_name || '',
+          quantity: part.part_count || 0,
+          cost: parseFloat(part.part_cost_total || '0'),
+          status: 'delivered', // Default status
+          part_number: part.part_number || '',
+          part_description: part.part_description || ''
+        };
+      });
+    })(),
+    notes: [] // Not available in API
+    };
+  }, [jobData, garage, mechanic, jobType, serviceType]);
+
+  // Show loading state
+  if (isLoading || !job) {
+    return (
+      <Fragment>
+        <div className="space-y-6">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-white mx-auto mb-4"></div>
+              <p className="text-gray-600 dark:text-gray-400">Loading job details...</p>
+            </div>
+          </div>
+        </div>
+      </Fragment>
+    );
+  }
+
+  // Type guard - job is guaranteed to be non-null after the check above
+  if (!job) return null;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -179,6 +355,7 @@ const JobDetailsContent = () => {
     }
   };
 
+  // Activity log - defined after null check
   const activityLog = [
     {
       id: 1,
@@ -191,7 +368,7 @@ const JobDetailsContent = () => {
     {
       id: 2,
       action: 'Mechanic Assigned',
-      details: `Assigned to ${job.assignedMechanic.name}`,
+      details: job.assignedMechanic ? `Assigned to ${job.assignedMechanic.name}` : 'No mechanic assigned',
       timestamp: job.createdAt,
       user: 'Admin',
       type: 'success'
@@ -200,15 +377,15 @@ const JobDetailsContent = () => {
       id: 3,
       action: 'Timer Started',
       details: 'Work timer was started',
-      timestamp: job.timer.started,
-      user: job.assignedMechanic.name,
+      timestamp: job.timer.started || job.createdAt,
+      user: job.assignedMechanic?.name || 'System',
       type: 'info'
     },
     {
       id: 4,
       action: 'Parts Delivered',
-      details: 'All required parts have been delivered',
-      timestamp: '2024-01-20 10:00:00',
+      details: job.parts && job.parts.length > 0 ? `${job.parts.length} parts have been delivered` : 'No parts required',
+      timestamp: job.createdAt,
       user: 'System',
       type: 'success'
     }
@@ -242,7 +419,7 @@ const JobDetailsContent = () => {
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
+          {/* <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
@@ -254,7 +431,7 @@ const JobDetailsContent = () => {
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -384,11 +561,11 @@ const JobDetailsContent = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
+                  {/* <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Progress</span>
                     <span className="text-sm text-gray-600">{job.progress}%</span>
                   </div>
-                  <Progress value={job.progress} className="h-2" />
+                  <Progress value={job.progress} className="h-2" /> */}
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -443,18 +620,22 @@ const JobDetailsContent = () => {
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={job.assignedMechanic.avatar} />
-                      <AvatarFallback>
-                        {job.assignedMechanic.name.split(' ').map(n => n[0]).join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{job.assignedMechanic.name}</p>
-                      <p className="text-sm text-gray-500">{job.assignedMechanic.phone}</p>
+                  {job.assignedMechanic ? (
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={job.assignedMechanic.avatar} />
+                        <AvatarFallback>
+                          {job.assignedMechanic.name.split(' ').map(n => n[0]).join('')}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{job.assignedMechanic.name}</p>
+                        <p className="text-sm text-gray-500">{job.assignedMechanic.phone}</p>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="text-sm text-gray-500">No mechanic assigned</div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -485,13 +666,27 @@ const JobDetailsContent = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {job.services.map((service, index) => (
-                      <div key={index} className="flex items-center gap-2 p-2 border rounded">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                        <span className="text-sm">{service}</span>
-                      </div>
-                    ))}
+                    {job.services && job.services.length > 0 ? (
+                      job.services.map((service, index) => (
+                        <div key={index} className="flex items-center gap-2 p-2 border rounded">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <span className="text-sm">{service}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500 py-4 text-center">No services assigned</p>
+                    )}
                   </div>
+                  {/* Debug info */}
+                  {/* {process.env.NODE_ENV === 'development' && (
+                    <div className="mt-4 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs">
+                      <p>Debug: job_service_type = {jobData?.job_service_type ?? 'null'}</p>
+                      <p>Debug: serviceType state = {serviceType ? JSON.stringify(serviceType) : 'null'}</p>
+                      <p>Debug: serviceType name = {serviceType?.service_type_name || 'null'}</p>
+                      <p>Debug: services array = {JSON.stringify(job.services)}</p>
+                      <p>Debug: services length = {job.services?.length || 0}</p>
+                    </div>
+                  )} */}
                 </CardContent>
               </Card>
 
@@ -505,16 +700,38 @@ const JobDetailsContent = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {job.parts.map((part, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 border rounded">
-                        <div>
-                          <p className="font-medium">{part.name}</p>
-                          <p className="text-sm text-gray-500">Qty: {part.quantity} | Cost: ${part.cost.toFixed(2)}</p>
+                    {job.parts && job.parts.length > 0 ? (
+                      job.parts.map((part, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 border rounded">
+                          <div className="flex-1">
+                            <p className="font-medium">{part.name || 'Unnamed Part'}</p>
+                            <div className="text-sm text-gray-500 mt-1">
+                              <span>Qty: {part.quantity}</span>
+                              {part.cost > 0 && <span className="ml-2">| Cost: ${part.cost.toFixed(2)}</span>}
+                            </div>
+                            {/* Show part number and description if available */}
+                            {part.part_number && (
+                              <p className="text-xs text-gray-400 mt-1">Part #: {part.part_number}</p>
+                            )}
+                            {part.part_description && (
+                              <p className="text-xs text-gray-400 mt-1">{part.part_description}</p>
+                            )}
+                          </div>
+                          {getPartStatusBadge(part.status)}
                         </div>
-                        {getPartStatusBadge(part.status)}
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500 py-4 text-center">No parts required</p>
+                    )}
                   </div>
+                  {/* Debug info */}
+                  {/* {process.env.NODE_ENV === 'development' && (
+                    <div className="mt-4 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs">
+                      <p>Debug: job_parts length = {jobData?.job_parts?.length || 0}</p>
+                      <p>Debug: job_parts = {JSON.stringify(jobData?.job_parts || [])}</p>
+                      <p>Debug: parts array = {JSON.stringify(job.parts)}</p>
+                    </div>
+                  )} */}
                 </CardContent>
               </Card>
             </div>
@@ -530,25 +747,29 @@ const JobDetailsContent = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {job.notes.map((note) => (
-                    <div key={note.id} className="flex gap-3">
-                      <div className="flex-shrink-0">
-                        <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
-                          <FileText className="h-4 w-4" />
+                  {job.notes && job.notes.length > 0 ? (
+                    job.notes.map((note: any, index: number) => (
+                      <div key={note.id || index} className="flex gap-3">
+                        <div className="flex-shrink-0">
+                          <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                            <FileText className="h-4 w-4" />
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm">{note.text}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-gray-500">{note.author}</span>
+                            <span className="text-xs text-gray-400">•</span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(note.timestamp).toLocaleString()}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm">{note.text}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-gray-500">{note.author}</span>
-                          <span className="text-xs text-gray-400">•</span>
-                          <span className="text-xs text-gray-500">
-                            {new Date(note.timestamp).toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500">No notes available</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -584,7 +805,7 @@ const JobDetailsContent = () => {
                           <span className="text-xs text-gray-500">{activity.user}</span>
                           <span className="text-xs text-gray-400">•</span>
                           <span className="text-xs text-gray-500">
-                            {new Date(activity.timestamp).toLocaleString()}
+                            {activity.timestamp ? new Date(activity.timestamp).toLocaleString() : 'N/A'}
                           </span>
                         </div>
                       </div>

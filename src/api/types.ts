@@ -631,3 +631,86 @@ export interface GetJobsResponse {
   status: number;
 }
 
+/**
+ * Start Timer Request
+ */
+export interface StartTimerRequest {
+  job_id: number;
+}
+
+/**
+ * Start Timer Response
+ */
+export interface StartTimerResponse {
+  data: JobWithParts;
+  message: string;
+  status: number;
+}
+
+/**
+ * Stop Timer Request
+ */
+export interface StopTimerRequest {
+  job_id: number;
+}
+
+/**
+ * Stop Timer Response
+ */
+export interface StopTimerResponse {
+  data: {
+    elapsed_time: string;
+    job: JobWithParts;
+  };
+  message: string;
+  status: number;
+}
+
+/**
+ * Update Job Status Request
+ */
+export interface UpdateJobStatusRequest {
+  job_id: number;
+  status: number; // 1=Complete, 2=Pending, 3=In progress, 4=onHold, 5=cancelled
+}
+
+/**
+ * Update Job Status Response
+ */
+export interface UpdateJobStatusResponse {
+  data: JobWithParts;
+  message: string;
+  status: number;
+}
+
+/**
+ * Delete Job Request
+ */
+export interface DeleteJobRequest {
+  job_id: number;
+}
+
+/**
+ * Delete Job Response
+ */
+export interface DeleteJobResponse {
+  message: string;
+  status: number;
+}
+
+/**
+ * Update Job Request (same as CreateJobRequest but with job_id)
+ */
+export interface UpdateJobRequest extends CreateJobRequest {
+  job_id: number;
+}
+
+/**
+ * Update Job Response
+ */
+export interface UpdateJobResponse {
+  data: JobWithParts;
+  message: string;
+  status: number;
+}
+

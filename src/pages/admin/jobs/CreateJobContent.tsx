@@ -1,5 +1,5 @@
 import { Fragment, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Car, 
@@ -22,10 +22,14 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { garageService, userService, jobTypeService, serviceTypeService, jobService } from '@/api/services';
 import { toast } from 'sonner';
-import type { Garage, User as UserType, JobType, ServiceType } from '@/api/types';
+import type { Garage, User as UserType, JobType, ServiceType, JobWithParts } from '@/api/types';
 
 const CreateJobContent = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const location = useLocation();
+  const isUpdateMode = !!id && location.pathname.includes('/update/');
+  const jobId = isUpdateMode ? parseInt(id || '0') : null;
   const [formData, setFormData] = useState({
     // Vehicle Information
     vehicleMake: '',
@@ -69,6 +73,8 @@ const CreateJobContent = () => {
   const [isLoadingJobTypes, setIsLoadingJobTypes] = useState(false);
   const [isLoadingServiceTypes, setIsLoadingServiceTypes] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingJob, setIsLoadingJob] = useState(false);
+  const [jobData, setJobData] = useState<JobWithParts | null>(null);
 
   // Fetch garages from API
   useEffect(() => {
@@ -154,17 +160,118 @@ const CreateJobContent = () => {
     fetchServiceTypes();
   }, []);
 
+  // Fetch job data when in update mode
+  useEffect(() => {
+    const fetchJobData = async () => {
+      if (!isUpdateMode || !jobId) return;
+
+      setIsLoadingJob(true);
+      try {
+        // Try to get job data from location state first
+        const stateJobData = location.state?.jobData as JobWithParts | undefined;
+        
+        if (stateJobData && stateJobData.job_id === jobId) {
+          console.log('Job data from state:', stateJobData);
+          setJobData(stateJobData);
+        } else {
+          // Fetch from API if not in state
+          console.log('Fetching job data from API for jobId:', jobId);
+          const response = await jobService.getAll({ page_number: 0, page_size: 1000 });
+          if (response.status === 1 && response.data?.jobs) {
+            const foundJob = response.data.jobs.find(j => j.job_id === jobId);
+            if (foundJob) {
+              console.log('Job data from API:', foundJob);
+              setJobData(foundJob);
+            } else {
+              toast.error('Job not found');
+              navigate('/admin/jobs');
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching job data:', error);
+        toast.error('Failed to load job data');
+        navigate('/admin/jobs');
+      } finally {
+        setIsLoadingJob(false);
+      }
+    };
+
+    fetchJobData();
+  }, [isUpdateMode, jobId, location.state, navigate]);
+
+  // Prefill form when job data is loaded and all dropdowns are ready
+  useEffect(() => {
+    if (jobData && isUpdateMode && garages.length > 0 && jobTypes.length > 0 && serviceTypes.length > 0) {
+      console.log('Prefilling form with job data:', jobData);
+      console.log('Available garages:', garages.map(g => ({ id: g.garage_id, name: g.garage_name })));
+      console.log('Available job types:', jobTypes.map(jt => ({ id: jt.job_type_id, name: jt.job_type_name })));
+      console.log('Available service types:', serviceTypes.map(st => ({ id: st.service_type_id, name: st.service_type_name })));
+      
+      const prefilledData = {
+        vehicleMake: jobData.vehicle_make || '',
+        vehicleModel: jobData.vehicle_model || '',
+        vehicleYear: jobData.vehicle_year || '',
+        licensePlate: jobData.vehicle_license_plate || '',
+        vin: jobData.vehicle_vin || '',
+        mileage: jobData.vehicle_mileage || '',
+        customerName: jobData.customer_name || '',
+        customerPhone: jobData.customer_phone_number || '',
+        customerEmail: jobData.customer_email_address || '',
+        jobType: jobData.job_type_id ? jobData.job_type_id.toString() : '',
+        priority: jobData.job_priority ? jobData.job_priority.toString() : '2',
+        description: jobData.job_description || '',
+        estimatedHours: jobData.job_estimated_hours || '',
+        estimatedCost: jobData.job_estimated_cost || '',
+        assignedGarage: jobData.garage_id ? jobData.garage_id.toString() : '',
+        assignedMechanic: jobData.mechanic_id ? jobData.mechanic_id.toString() : '',
+        services: jobData.job_service_type ? [jobData.job_service_type.toString()] : [],
+        parts: (jobData.job_parts || []).map(part => ({
+          name: part.part_name || '',
+          quantity: part.part_count || 0,
+          cost: parseFloat(part.part_cost_total || '0'),
+        })),
+      };
+
+      console.log('Prefilled form data:', prefilledData);
+      setFormData(prefilledData);
+
+      // Also set the newService if there's a service type
+      if (jobData.job_service_type) {
+        const serviceIdStr = jobData.job_service_type.toString();
+        console.log('Setting newService to:', serviceIdStr);
+        setNewService(serviceIdStr);
+      }
+
+      console.log('Form prefilled successfully. Values:', {
+        jobType: prefilledData.jobType,
+        garage: prefilledData.assignedGarage,
+        mechanic: prefilledData.assignedMechanic,
+        service: prefilledData.services[0],
+        priority: prefilledData.priority,
+      });
+    }
+  }, [jobData, isUpdateMode, garages, jobTypes, serviceTypes]);
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleAddService = () => {
+    console.log('handleAddService called - newService:', newService);
     if (newService && !formData.services.includes(newService)) {
-      setFormData(prev => ({
-        ...prev,
-        services: [...prev.services, newService]
-      }));
+      console.log('Adding service to array:', newService);
+      setFormData(prev => {
+        const updated = {
+          ...prev,
+          services: [...prev.services, newService]
+        };
+        console.log('Updated services array:', updated.services);
+        return updated;
+      });
       setNewService('');
+    } else {
+      console.log('Service not added - already in array or empty');
     }
   };
 
@@ -225,7 +332,30 @@ const CreateJobContent = () => {
       const jobTypeId = formData.jobType ? parseInt(formData.jobType) : undefined;
       const garageId = formData.assignedGarage ? parseInt(formData.assignedGarage) : undefined;
       const mechanicId = formData.assignedMechanic ? parseInt(formData.assignedMechanic) : undefined;
-      const serviceTypeId = formData.services.length > 0 ? parseInt(formData.services[0]) : undefined;
+      // Get the service type ID from either:
+      // 1. The services array (if user clicked "+" button)
+      // 2. The newService state (if user selected but didn't click "+")
+      let serviceTypeId: number | undefined = undefined;
+      
+      // First, try to get from services array
+      if (formData.services.length > 0 && formData.services[0]) {
+        const firstServiceId = formData.services[0];
+        serviceTypeId = parseInt(firstServiceId);
+        console.log('Service from array - firstServiceId:', firstServiceId, 'parsed:', serviceTypeId);
+      } 
+      // If no service in array, check if user selected one in dropdown
+      else if (newService) {
+        serviceTypeId = parseInt(newService);
+        console.log('Service from dropdown (newService) - serviceId:', newService, 'parsed:', serviceTypeId);
+      } else {
+        console.log('No service selected - formData.services:', formData.services, 'newService:', newService);
+      }
+      
+      console.log('Service mapping debug:');
+      console.log('formData.services:', formData.services);
+      console.log('formData.services.length:', formData.services.length);
+      console.log('newService (dropdown value):', newService);
+      console.log('serviceTypeId (final):', serviceTypeId);
       
       const requestData = {
         // Vehicle information - always send, use empty string if not provided
@@ -254,27 +384,57 @@ const CreateJobContent = () => {
         mechanic_id: mechanicId,
         
         // Status and additional fields - always send
-        status: 1,
-        timer: '00:00:00', // Default timer value
-        extra_data: '', // Default empty
+        // In update mode, use current values; in create mode, use defaults
+        status: isUpdateMode && jobData?.status !== undefined ? jobData.status : 2,
+        timer: isUpdateMode && jobData?.timer !== undefined && jobData.timer !== null ? jobData.timer : '00:00:00',
+        extra_data: isUpdateMode && jobData?.extra_data !== undefined && jobData.extra_data !== null ? jobData.extra_data : '',
         
         // Parts data - always send arrays, even if empty
         part_name: formData.parts.length > 0 ? formData.parts.map(part => part.name) : [],
         part_count: formData.parts.length > 0 ? formData.parts.map(part => part.quantity) : [],
-        part_number: formData.parts.length > 0 ? formData.parts.map(() => '') : [], // Empty string for each part
-        part_description: formData.parts.length > 0 ? formData.parts.map(() => '') : [], // Empty string for each part
+        part_number: formData.parts.length > 0 ? formData.parts.map((part, index) => {
+          // In update mode, try to get part_number from jobData
+          if (isUpdateMode && jobData?.job_parts && jobData.job_parts[index]) {
+            return jobData.job_parts[index].part_number || '';
+          }
+          return '';
+        }) : [],
+        part_description: formData.parts.length > 0 ? formData.parts.map((part, index) => {
+          // In update mode, try to get part_description from jobData
+          if (isUpdateMode && jobData?.job_parts && jobData.job_parts[index]) {
+            return jobData.job_parts[index].part_description || '';
+          }
+          return '';
+        }) : [],
         part_cost_total: formData.parts.length > 0 ? formData.parts.map(part => part.cost.toString()) : [],
       };
 
-      console.log('Calling jobService.create with data:', requestData);
-      const response = await jobService.create(requestData);
-      console.log('API Response:', response);
+      if (isUpdateMode && jobId) {
+        // Update job
+        console.log('Calling jobService.update with data:', { ...requestData, job_id: jobId });
+        const updateRequest = { ...requestData, job_id: jobId };
+        const response = await jobService.update(updateRequest);
+        console.log('Update API Response:', response);
 
-      if (response.status === 1) {
-        toast.success(response.message || 'Job created successfully');
-        navigate('/admin/jobs');
+        if (response.status === 1) {
+          toast.success(response.message || 'Job updated successfully');
+          navigate('/admin/jobs');
+        } else {
+          toast.error(response.message || 'Failed to update job');
+        }
       } else {
-        toast.error(response.message || 'Failed to create job');
+        // Create job
+        console.log('Calling jobService.create with data:', requestData);
+        console.log('job_service_type in requestData:', requestData.job_service_type);
+        const response = await jobService.create(requestData);
+        console.log('API Response:', response);
+
+        if (response.status === 1) {
+          toast.success(response.message || 'Job created successfully');
+          navigate('/admin/jobs');
+        } else {
+          toast.error(response.message || 'Failed to create job');
+        }
       }
     } catch (error: any) {
       console.error('Error creating job:', error);
@@ -298,14 +458,34 @@ const CreateJobContent = () => {
     }
   };
 
+  // Show loading state while fetching job data in update mode
+  if (isUpdateMode && isLoadingJob) {
+    return (
+      <Fragment>
+        <div className="space-y-6">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600 dark:text-gray-400">Loading job data...</p>
+            </div>
+          </div>
+        </div>
+      </Fragment>
+    );
+  }
+
   return (
     <Fragment>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Create New Job</h1>
-            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Add a new service job to the system</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+              {isUpdateMode ? 'Update Job' : 'Create New Job'}
+            </h1>
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+              {isUpdateMode ? 'Update the service job details' : 'Add a new service job to the system'}
+            </p>
           </div>
           <Button
             variant="outline"
@@ -741,9 +921,11 @@ const CreateJobContent = () => {
             >
               Cancel
             </Button>
-            <Button type="submit" className="flex items-center gap-2" disabled={isSubmitting}>
+            <Button type="submit" className="flex items-center gap-2" disabled={isSubmitting || isLoadingJob}>
               <Save className="h-4 w-4" />
-              {isSubmitting ? 'Creating...' : 'Create Job'}
+              {isSubmitting 
+                ? (isUpdateMode ? 'Updating...' : 'Creating...') 
+                : (isUpdateMode ? 'Update Job' : 'Create Job')}
             </Button>
           </div>
         </form>

@@ -229,6 +229,7 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/admin/garages/create" element={<CreateGaragePage />} />
           <Route path="/admin/jobs" element={<JobsListPage />} />
           <Route path="/admin/jobs/create" element={<CreateJobPage />} />
+          <Route path="/admin/jobs/update/:id" element={<CreateJobPage />} />
           <Route path="/admin/jobs/:id" element={<JobDetailsPage />} />
           <Route path="/admin/branding" element={<BrandingSettingsPage />} />
           <Route path="/admin/branding/output" element={<BrandingOutputPage />} />
