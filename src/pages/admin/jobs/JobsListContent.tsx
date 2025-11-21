@@ -207,11 +207,10 @@ const JobsListContent = () => {
       const params: any = {
         page_number: currentPage,
         page_size: pageSize,
+        search: searchTerm || '', // Always send search, even if empty
       };
 
-      if (searchTerm) {
-        params.search = searchTerm;
-      }
+      // Only add filters if they're not "all"
       if (garageFilter !== 'all') {
         params.garage_id = parseInt(garageFilter);
       }
@@ -374,7 +373,14 @@ const JobsListContent = () => {
     console.log(`Timer ${action} for job ${job.id}`);
   };
 
-  if (!isLoading && jobs.length === 0) {
+  // Check if any filters are active
+  const hasActiveFilters = searchTerm !== '' || 
+    garageFilter !== 'all' || 
+    mechanicFilter !== 'all' || 
+    statusFilter !== 'all';
+
+  // Only show "No Jobs Yet" if there are no jobs AND no filters are applied
+  if (!isLoading && jobs.length === 0 && !hasActiveFilters) {
     return (
       <Fragment>
         <div className="space-y-6">
@@ -528,8 +534,22 @@ const JobsListContent = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredJobs.map((job) => (
-                    <TableRow key={job.id} className="hover:bg-gray-800/50 dark:hover:bg-gray-700/50 transition-colors">
+                  {filteredJobs.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-12">
+                        <div className="flex flex-col items-center justify-center">
+                          <Wrench className="h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
+                          <p className="text-gray-600 dark:text-gray-400">
+                            {hasActiveFilters 
+                              ? 'No jobs found matching your filters.' 
+                              : 'No jobs found.'}
+                          </p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredJobs.map((job) => (
+                      <TableRow key={job.id} className="hover:bg-gray-800/50 dark:hover:bg-gray-700/50 transition-colors">
                       <TableCell className="py-4">
                         <div className="font-medium">{job.id}</div>
                         <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -610,14 +630,27 @@ const JobsListContent = () => {
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
 
             {/* Mobile Cards */}
             <div className="lg:hidden space-y-4">
-              {filteredJobs.map((job) => (
+              {filteredJobs.length === 0 ? (
+                <Card className="p-8 text-center">
+                  <div className="flex flex-col items-center justify-center">
+                    <Wrench className="h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
+                    <p className="text-gray-600 dark:text-gray-400">
+                      {hasActiveFilters 
+                        ? 'No jobs found matching your filters.' 
+                        : 'No jobs found.'}
+                    </p>
+                  </div>
+                </Card>
+              ) : (
+                filteredJobs.map((job) => (
                 <Card key={job.id} className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div>
@@ -683,7 +716,8 @@ const JobsListContent = () => {
                     </Button>
                   </div>
                 </Card>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

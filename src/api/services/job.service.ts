@@ -87,20 +87,50 @@ class JobService {
    * Get all jobs with filters and pagination
    * Bearer token required
    * POST request with optional filters
+   * Uses form-data format (multipart/form-data)
    */
   async getAll(params?: GetJobsRequest): Promise<GetJobsResponse> {
-    const requestData: GetJobsRequest = {
-      page_number: params?.page_number,
-      page_size: params?.page_size,
-      search: params?.search,
-      garage_id: params?.garage_id,
-      mechanic_id: params?.mechanic_id,
-      status: params?.status,
-    };
+    // Create FormData for multipart/form-data request
+    const formData = new FormData();
+    
+    // Always include page_number and page_size
+    if (params?.page_number !== undefined) {
+      formData.append('page_number', params.page_number.toString());
+    } else {
+      formData.append('page_number', '0');
+    }
+    
+    if (params?.page_size !== undefined) {
+      formData.append('page_size', params.page_size.toString());
+    } else {
+      formData.append('page_size', '10');
+    }
+    
+    // Add search parameter (always send, even if empty)
+    if (params?.search !== undefined) {
+      formData.append('search', params.search);
+    } else {
+      formData.append('search', '');
+    }
+    
+    // Add garage_id parameter (only if provided)
+    if (params?.garage_id !== undefined && params.garage_id !== null) {
+      formData.append('garage_id', params.garage_id.toString());
+    }
+    
+    // Add mechanic_id parameter (only if provided)
+    if (params?.mechanic_id !== undefined && params.mechanic_id !== null) {
+      formData.append('mechanic_id', params.mechanic_id.toString());
+    }
+    
+    // Add status parameter (only if provided)
+    if (params?.status !== undefined && params.status !== null) {
+      formData.append('status', params.status.toString());
+    }
 
     const response = await apiClient.post<GetJobsResponse>(
       JOB_ENDPOINTS.GET_ALL,
-      requestData
+      formData
     );
     return response.data;
   }
