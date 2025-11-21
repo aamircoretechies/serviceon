@@ -541,6 +541,7 @@ export interface CreateJobRequest {
  * Job Part Model
  */
 export interface JobPart {
+  job_part_id?: number;
   part_id?: number;
   job_id?: number;
   part_name?: string;
@@ -587,6 +588,45 @@ export interface Job {
  */
 export interface CreateJobResponse {
   data: Job;
+  message: string;
+  status: number;
+}
+
+/**
+ * Get Jobs Request
+ */
+export interface GetJobsRequest {
+  page_number?: number;
+  page_size?: number;
+  search?: string;
+  garage_id?: number;
+  mechanic_id?: number;
+  status?: number;
+}
+
+/**
+ * Job with Parts
+ */
+export interface JobWithParts extends Job {
+  job_parts?: JobPart[];
+}
+
+/**
+ * Get Jobs Response Data
+ */
+export interface GetJobsResponseData {
+  total_elements: number;
+  jobs: JobWithParts[];
+  total_pages: number;
+  current_page: number;
+  page_size: number;
+}
+
+/**
+ * Get Jobs Response
+ */
+export interface GetJobsResponse {
+  data: GetJobsResponseData;
   message: string;
   status: number;
 }

@@ -70,6 +70,7 @@ export const SERVICE_TYPE_ENDPOINTS = {
  */
 export const JOB_ENDPOINTS = {
   CREATE: `${API_URL}/jobs/create`,
+  GET_ALL: `${API_URL}/jobs/get-all`,
 } as const;
 
 /**

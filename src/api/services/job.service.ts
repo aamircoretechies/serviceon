@@ -6,7 +6,7 @@
 
 import { apiClient } from '../client';
 import { JOB_ENDPOINTS } from '../endpoints';
-import type { CreateJobRequest, CreateJobResponse } from '../types';
+import type { CreateJobRequest, CreateJobResponse, GetJobsRequest, GetJobsResponse } from '../types';
 
 /**
  * Job Service Class
@@ -79,6 +79,28 @@ class JobService {
     const response = await apiClient.post<CreateJobResponse>(
       JOB_ENDPOINTS.CREATE,
       formData
+    );
+    return response.data;
+  }
+
+  /**
+   * Get all jobs with filters and pagination
+   * Bearer token required
+   * POST request with optional filters
+   */
+  async getAll(params?: GetJobsRequest): Promise<GetJobsResponse> {
+    const requestData: GetJobsRequest = {
+      page_number: params?.page_number,
+      page_size: params?.page_size,
+      search: params?.search,
+      garage_id: params?.garage_id,
+      mechanic_id: params?.mechanic_id,
+      status: params?.status,
+    };
+
+    const response = await apiClient.post<GetJobsResponse>(
+      JOB_ENDPOINTS.GET_ALL,
+      requestData
     );
     return response.data;
   }
