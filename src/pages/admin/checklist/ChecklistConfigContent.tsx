@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { 
   Plus, 
   GripVertical, 
@@ -19,6 +19,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Image, PenTool } from 'lucide-react';
+import { toast } from 'sonner';
+import { intakeChecklistService } from '@/api/services';
+import type { IntakeChecklistItem } from '@/api/types';
 
 import { 
   Select, 
@@ -37,6 +40,7 @@ import {
 
 interface ChecklistItem {
   id: string;
+  checklist_item_id?: number;
   type: 'text' | 'textarea' | 'number' | 'checkbox' |'photo' | 'signature';
   label: string;
   placeholder?: string;
@@ -44,53 +48,36 @@ interface ChecklistItem {
   order: number;
 }
 
-const ChecklistConfigContent = () => {
-  const [items, setItems] = useState<ChecklistItem[]>([
-    {
-      id: '1',
-      type: 'text',
-      label: 'Customer Name',
-      placeholder: 'Enter customer name',
-      required: true,
-      order: 1
-    },
-    {
-      id: '2',
-      type: 'text',
-      label: 'Vehicle Make',
-      placeholder: 'Enter vehicle make',
-      required: true,
-      order: 2
-    },
-    {
-      id: '3',
-      type: 'text',
-      label: 'Vehicle Model',
-      placeholder: 'Enter vehicle model',
-      required: true,
-      order: 3
-    },
-    {
-      id: '4',
-      type: 'number',
-      label: 'Vehicle Year',
-      placeholder: 'Enter vehicle year',
-      required: true,
-      order: 4
-    },
-    {
-      id: '5',
-      type: 'textarea',
-      label: 'Service Description',
-      placeholder: 'Describe the service needed',
-      required: false,
-      order: 5
-    }
-  ]);
+// Field type mapping: UI value -> API value
+const FIELD_TYPE_TO_API: Record<string, string> = {
+  'text': 'Short Text',
+  'textarea': 'Long Text',
+  'number': 'Number',
+  'checkbox': 'Checkbox',
+  'photo': 'Photo Upload',
+  'signature': 'Signature',
+};
 
+// Reverse mapping: API value -> UI value
+const API_TO_FIELD_TYPE: Record<string, string> = {
+  'Short Text': 'text',
+  'Long Text': 'textarea',
+  'Number': 'number',
+  'Checkbox': 'checkbox',
+  'Photo Upload': 'photo',
+  'Signature': 'signature',
+};
+
+const ChecklistConfigContent = () => {
+  const [items, setItems] = useState<ChecklistItem[]>([]);
+  const [latestUpdated, setLatestUpdated] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ChecklistItem | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isReordering, setIsReordering] = useState(false);
 
   const fieldTypes = [
     { value: 'text', label: 'Short Text', icon: Type },
@@ -102,42 +89,200 @@ const ChecklistConfigContent = () => {
 
   ];
 
-  const addItem = (newItem: Omit<ChecklistItem, 'id' | 'order'>) => {
-    const item: ChecklistItem = {
-      ...newItem,
-      id: Date.now().toString(),
-      order: items.length + 1
-    };
-    setItems([...items, item]);
-    setIsAddDialogOpen(false);
+  // Fetch checklist items on mount
+  useEffect(() => {
+    fetchChecklistItems();
+  }, []);
+
+  const fetchChecklistItems = async () => {
+    setIsLoading(true);
+    try {
+      const response = await intakeChecklistService.getAll();
+      if (response.status === 1 && response.data) {
+        // Sort by order_position first, then map API response to UI format
+        const sortedItems = [...response.data.checklist_items].sort((a, b) => {
+          return (a.order_position || 0) - (b.order_position || 0);
+        });
+        
+        const mappedItems: ChecklistItem[] = sortedItems.map((item) => ({
+          id: item.checklist_item_id.toString(),
+          checklist_item_id: item.checklist_item_id,
+          type: (API_TO_FIELD_TYPE[item.field_type] || 'text') as ChecklistItem['type'],
+          label: item.field_label,
+          placeholder: item.placeholder_text || undefined,
+          required: item.is_required,
+          order: item.order_position,
+        }));
+        setItems(mappedItems);
+        setLatestUpdated(response.data.latest_updated);
+      } else {
+        toast.error(response.message || 'Failed to load checklist items');
+      }
+    } catch (error: any) {
+      console.error('Error fetching checklist items:', error);
+      toast.error(error?.response?.data?.message || 'Failed to load checklist items');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const updateItem = (id: string, updates: Partial<ChecklistItem>) => {
-    setItems(items.map(item => 
-      item.id === id ? { ...item, ...updates } : item
-    ));
-    setEditingItem(null);
+  const addItem = async (newItem: Omit<ChecklistItem, 'id' | 'order' | 'checklist_item_id'>) => {
+    setIsSaving(true);
+    try {
+      const apiFieldType = FIELD_TYPE_TO_API[newItem.type] || 'Short Text';
+      const response = await intakeChecklistService.create({
+        field_label: newItem.label,
+        field_type: apiFieldType,
+        placeholder_text: newItem.placeholder || '',
+        is_required: newItem.required,
+      });
+
+      if (response.status === 1) {
+        toast.success(response.message || 'Checklist item created successfully');
+        setIsAddDialogOpen(false);
+        // Refresh the list
+        await fetchChecklistItems();
+      } else {
+        toast.error(response.message || 'Failed to create checklist item');
+      }
+    } catch (error: any) {
+      console.error('Error creating checklist item:', error);
+      toast.error(error?.response?.data?.message || 'Failed to create checklist item');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const deleteItem = (id: string) => {
-    setItems(items.filter(item => item.id !== id));
+  const updateItem = async (id: string, updates: Partial<ChecklistItem>) => {
+    const item = items.find(i => i.id === id);
+    if (!item || !item.checklist_item_id) {
+      toast.error('Item not found');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const apiFieldType = FIELD_TYPE_TO_API[updates.type || item.type] || FIELD_TYPE_TO_API[item.type];
+      const response = await intakeChecklistService.update({
+        checklist_item_id: item.checklist_item_id,
+        field_label: updates.label || item.label,
+        field_type: apiFieldType,
+        placeholder_text: updates.placeholder !== undefined ? (updates.placeholder || '') : (item.placeholder || ''),
+        is_required: updates.required !== undefined ? updates.required : item.required,
+      });
+
+      if (response.status === 1) {
+        toast.success(response.message || 'Checklist item updated successfully');
+        setEditingItem(null);
+        // Refresh the list
+        await fetchChecklistItems();
+      } else {
+        toast.error(response.message || 'Failed to update checklist item');
+      }
+    } catch (error: any) {
+      console.error('Error updating checklist item:', error);
+      toast.error(error?.response?.data?.message || 'Failed to update checklist item');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const moveItem = (id: string, direction: 'up' | 'down') => {
+  const deleteItem = async (id: string) => {
+    const item = items.find(i => i.id === id);
+    if (!item || !item.checklist_item_id) {
+      toast.error('Item not found');
+      return;
+    }
+
+    // Confirm deletion
+    if (!confirm(`Are you sure you want to delete "${item.label}"?`)) {
+      return;
+    }
+
+    setIsDeleting(id);
+    try {
+      const response = await intakeChecklistService.delete({
+        checklist_item_id: item.checklist_item_id,
+      });
+
+      if (response.status === 1) {
+        toast.success(response.message || 'Checklist item deleted successfully');
+        // Refresh the list
+        await fetchChecklistItems();
+      } else {
+        toast.error(response.message || 'Failed to delete checklist item');
+      }
+    } catch (error: any) {
+      console.error('Error deleting checklist item:', error);
+      toast.error(error?.response?.data?.message || 'Failed to delete checklist item');
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const moveItem = async (id: string, direction: 'up' | 'down') => {
     const currentIndex = items.findIndex(item => item.id === id);
     if (currentIndex === -1) return;
 
     const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
     if (newIndex < 0 || newIndex >= items.length) return;
 
+    // Optimistically update UI
     const newItems = [...items];
     [newItems[currentIndex], newItems[newIndex]] = [newItems[newIndex], newItems[currentIndex]];
     setItems(newItems);
+
+    // Update order positions
+    setIsReordering(true);
+    try {
+      const checklistItemIds = newItems.map(item => item.checklist_item_id!);
+      const orderPositions = newItems.map((_, index) => index + 1);
+
+      const response = await intakeChecklistService.setArrangeOrder({
+        checklist_item_ids: checklistItemIds,
+        order_positions: orderPositions,
+      });
+
+      if (response.status === 1) {
+        toast.success(response.message || 'Order updated successfully');
+        // Refresh to get latest_updated
+        await fetchChecklistItems();
+      } else {
+        toast.error(response.message || 'Failed to update order');
+        // Revert on error
+        await fetchChecklistItems();
+      }
+    } catch (error: any) {
+      console.error('Error updating order:', error);
+      toast.error(error?.response?.data?.message || 'Failed to update order');
+      // Revert on error
+      await fetchChecklistItems();
+    } finally {
+      setIsReordering(false);
+    }
   };
 
   const getFieldIcon = (type: string) => {
     const fieldType = fieldTypes.find(ft => ft.value === type);
     return fieldType ? fieldType.icon : Type;
+  };
+
+  const formatDate = (dateString: string): string => {
+    if (!dateString) return 'Never';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      }) + ' at ' + date.toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+    } catch {
+      return dateString;
+    }
   };
 
   const renderPreviewField = (item: ChecklistItem) => {
@@ -226,7 +371,11 @@ const ChecklistConfigContent = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {items.length === 0 ? (
+            {isLoading ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">Loading checklist items...</p>
+              </div>
+            ) : items.length === 0 ? (
               <div className="text-center py-8">
                 <CheckSquare className="h-12 w-12 mx-auto text-gray-400 mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No checklist items</h3>
@@ -268,7 +417,7 @@ const ChecklistConfigContent = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => moveItem(item.id, 'up')}
-                          disabled={index === 0}
+                          disabled={index === 0 || isReordering}
                         >
                           ↑
                         </Button>
@@ -276,7 +425,7 @@ const ChecklistConfigContent = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => moveItem(item.id, 'down')}
-                          disabled={index === items.length - 1}
+                          disabled={index === items.length - 1 || isReordering}
                         >
                           ↓
                         </Button>
@@ -284,6 +433,7 @@ const ChecklistConfigContent = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => setEditingItem(item)}
+                          disabled={isSaving}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -291,6 +441,7 @@ const ChecklistConfigContent = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => deleteItem(item.id)}
+                          disabled={isDeleting === item.id}
                           className="text-red-600 hover:text-red-700"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -313,7 +464,7 @@ const ChecklistConfigContent = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Last updated: {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
+                  Last updated: {latestUpdated ? formatDate(latestUpdated) : 'Never'}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
                   Changes will be applied to new intake forms immediately
@@ -327,17 +478,17 @@ const ChecklistConfigContent = () => {
 
       {/* Add Item Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent>
+        <DialogContent className="p-6">
           <DialogHeader>
             <DialogTitle>Add Checklist Field</DialogTitle>
           </DialogHeader>
-          <AddItemForm onSubmit={addItem} onCancel={() => setIsAddDialogOpen(false)} />
+          <AddItemForm onSubmit={addItem} onCancel={() => setIsAddDialogOpen(false)} isSaving={isSaving} />
         </DialogContent>
       </Dialog>
 
       {/* Edit Item Dialog */}
       <Dialog open={!!editingItem} onOpenChange={() => setEditingItem(null)}>
-        <DialogContent>
+        <DialogContent className="p-6">
           <DialogHeader>
             <DialogTitle>Edit Checklist Field</DialogTitle>
           </DialogHeader>
@@ -345,7 +496,8 @@ const ChecklistConfigContent = () => {
             <EditItemForm 
               item={editingItem} 
               onSubmit={(updates) => updateItem(editingItem.id, updates)} 
-              onCancel={() => setEditingItem(null)} 
+              onCancel={() => setEditingItem(null)}
+              isSaving={isSaving}
             />
           )}
         </DialogContent>
@@ -380,9 +532,10 @@ const ChecklistConfigContent = () => {
 };
 
 // Add Item Form Component
-const AddItemForm = ({ onSubmit, onCancel }: { 
-  onSubmit: (item: Omit<ChecklistItem, 'id' | 'order'>) => void;
+const AddItemForm = ({ onSubmit, onCancel, isSaving }: { 
+  onSubmit: (item: Omit<ChecklistItem, 'id' | 'order' | 'checklist_item_id'>) => void;
   onCancel: () => void;
+  isSaving: boolean;
 }) => {
   const [formData, setFormData] = useState({
     type: 'text' as ChecklistItem['type'],
@@ -449,20 +602,23 @@ const AddItemForm = ({ onSubmit, onCancel }: {
       </div>
 
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isSaving}>
           Cancel
         </Button>
-        <Button type="submit">Add Field</Button>
+        <Button type="submit" disabled={isSaving}>
+          {isSaving ? 'Adding...' : 'Add Field'}
+        </Button>
       </div>
     </form>
   );
 };
 
 // Edit Item Form Component
-const EditItemForm = ({ item, onSubmit, onCancel }: {
+const EditItemForm = ({ item, onSubmit, onCancel, isSaving }: {
   item: ChecklistItem;
   onSubmit: (updates: Partial<ChecklistItem>) => void;
   onCancel: () => void;
+  isSaving: boolean;
 }) => {
   const [formData, setFormData] = useState({
     type: item.type,
@@ -493,6 +649,8 @@ const EditItemForm = ({ item, onSubmit, onCancel }: {
             <SelectItem value="textarea">Long Text</SelectItem>
             <SelectItem value="number">Number</SelectItem>
             <SelectItem value="checkbox">Checkbox</SelectItem>
+            <SelectItem value="photo">Photo Upload</SelectItem>
+            <SelectItem value="signature">Signature</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -527,10 +685,12 @@ const EditItemForm = ({ item, onSubmit, onCancel }: {
       </div>
 
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isSaving}>
           Cancel
         </Button>
-        <Button type="submit">Save Changes</Button>
+        <Button type="submit" disabled={isSaving}>
+          {isSaving ? 'Saving...' : 'Save Changes'}
+        </Button>
       </div>
     </form>
   );

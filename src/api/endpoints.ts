@@ -102,6 +102,17 @@ export const LABOR_RATES_ENDPOINTS = {
 } as const;
 
 /**
+ * Intake Checklist Endpoints
+ */
+export const INTAKE_CHECKLIST_ENDPOINTS = {
+  CREATE: `${API_URL}/intake-checklist/create`,
+  GET_ALL: `${API_URL}/intake-checklist/get-all`,
+  UPDATE: `${API_URL}/intake-checklist/update`,
+  DELETE: `${API_URL}/intake-checklist/delete`,
+  SET_ARRANGE_ORDER: `${API_URL}/intake-checklist/set-arrange-order`,
+} as const;
+
+/**
  * Export all endpoints for easy access
  * Additional endpoints will be added here as we integrate features
  */
@@ -116,6 +127,7 @@ export const API_ENDPOINTS = {
   BRAND_SETTINGS: BRAND_SETTINGS_ENDPOINTS,
   LABOR_CATEGORY: LABOR_CATEGORY_ENDPOINTS,
   LABOR_RATES: LABOR_RATES_ENDPOINTS,
+  INTAKE_CHECKLIST: INTAKE_CHECKLIST_ENDPOINTS,
   // Additional endpoints will be added here incrementally
 } as const;
 

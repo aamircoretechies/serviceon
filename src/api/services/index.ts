@@ -14,4 +14,5 @@ export * from './job.service';
 export * from './brand-settings.service';
 export * from './labor-category.service';
 export * from './labor-rates.service';
+export * from './intake-checklist.service';
 

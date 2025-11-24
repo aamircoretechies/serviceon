@@ -836,3 +836,99 @@ export interface GetLaborRatesResponse {
   status: number;
 }
 
+/**
+ * Intake Checklist Item
+ */
+export interface IntakeChecklistItem {
+  checklist_item_id: number;
+  field_label: string;
+  field_type: string;
+  placeholder_text?: string;
+  is_required: boolean;
+  order_position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Create Intake Checklist Item Request
+ */
+export interface CreateIntakeChecklistItemRequest {
+  field_label: string;
+  field_type: string;
+  placeholder_text?: string;
+  is_required: boolean;
+}
+
+/**
+ * Create Intake Checklist Item Response
+ */
+export interface CreateIntakeChecklistItemResponse {
+  data: IntakeChecklistItem;
+  message: string;
+  status: number;
+}
+
+/**
+ * Get Intake Checklist Items Response
+ */
+export interface GetIntakeChecklistItemsResponse {
+  data: {
+    latest_updated: string;
+    total_count: number;
+    checklist_items: IntakeChecklistItem[];
+  };
+  message: string;
+  status: number;
+}
+
+/**
+ * Update Intake Checklist Item Request
+ */
+export interface UpdateIntakeChecklistItemRequest {
+  checklist_item_id: number;
+  field_label: string;
+  field_type: string;
+  placeholder_text?: string;
+  is_required: boolean;
+}
+
+/**
+ * Update Intake Checklist Item Response
+ */
+export interface UpdateIntakeChecklistItemResponse {
+  message: string;
+  status: number;
+}
+
+/**
+ * Delete Intake Checklist Item Request
+ */
+export interface DeleteIntakeChecklistItemRequest {
+  checklist_item_id: number;
+}
+
+/**
+ * Delete Intake Checklist Item Response
+ */
+export interface DeleteIntakeChecklistItemResponse {
+  message: string;
+  status: number;
+}
+
+/**
+ * Set Arrange Order Request
+ */
+export interface SetArrangeOrderRequest {
+  checklist_item_ids: number[];
+  order_positions: number[];
+}
+
+/**
+ * Set Arrange Order Response
+ */
+export interface SetArrangeOrderResponse {
+  message: string;
+  status: number;
+}
+
