@@ -122,7 +122,7 @@ export const isTesting = (): boolean => {
  * Base URL for serving images (logos, avatars, etc.)
  */
 export const getImagesBaseUrl = (): string => {
-  return import.meta.env.VITE_APP_IMAGES_BASE_URL || 'https://jaap.live/serviceon-images';
+  return import.meta.env.VITE_APP_IMAGES_BASE_URL || 'http://103.93.94.155:8080/serviceon-images';
 };
 
 export const IMAGES_BASE_URL = getImagesBaseUrl();

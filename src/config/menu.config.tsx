@@ -37,11 +37,11 @@ export const MENU_SIDEBAR: TMenuConfig = [
         icon: 'color-swatch',
         path: '/admin/branding'
       },
-      {
-        title: 'Output Settings',
-        icon: 'document',
-        path: '/admin/branding/output'
-      }
+      // {
+      //   title: 'Output Settings',
+      //   icon: 'document',
+      //   path: '/admin/branding/output'
+      // }
     ]
   },
   {

@@ -714,3 +714,125 @@ export interface UpdateJobResponse {
   status: number;
 }
 
+/**
+ * Brand Settings Data
+ */
+export interface BrandSettingsData {
+  id?: number;
+  logo?: string | null;
+  show_logo_on_outputs?: number;
+  company_name?: string;
+  phone_number?: string;
+  address?: string;
+  email?: string;
+  website?: string;
+  show_content_information?: number;
+  show_custom_footer?: number;
+  footer_text?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/**
+ * Get Brand Settings Response
+ */
+export interface GetBrandSettingsResponse {
+  data: BrandSettingsData;
+  message: string;
+  status: number;
+}
+
+/**
+ * Create or Update Brand Settings Request
+ */
+export interface CreateOrUpdateBrandSettingsRequest {
+  logo?: File | null;
+  show_logo_on_outputs?: number;
+  company_name?: string;
+  phone_number?: string;
+  address?: string;
+  email?: string;
+  website?: string;
+  show_content_information?: number;
+  show_custom_footer?: number;
+  footer_text?: string;
+}
+
+/**
+ * Create or Update Brand Settings Response
+ */
+export interface CreateOrUpdateBrandSettingsResponse {
+  message: string;
+  status: number;
+}
+
+/**
+ * Labor Category
+ */
+export interface LaborCategory {
+  labor_category_id: number;
+  category_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Get Labor Categories Response
+ */
+export interface GetLaborCategoriesResponse {
+  data: LaborCategory[];
+  message: string;
+  status: number;
+}
+
+/**
+ * Create Labor Rate Request
+ */
+export interface CreateLaborRateRequest {
+  standard_rate: number;
+  overtime_rate: number;
+  weekend_rate: number;
+  holiday_rate: number;
+  currency: string;
+  billing_unit: string;
+  labor_category_id: number;
+  notes?: string;
+  garage_id: number;
+}
+
+/**
+ * Labor Rate
+ */
+export interface LaborRate {
+  id: number;
+  labor_category_id: number;
+  garage_id: number;
+  standard_rate: number;
+  overtime_rate: number;
+  weekend_rate: number;
+  holiday_rate: number;
+  currency: string;
+  billing_unit: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Create Labor Rate Response
+ */
+export interface CreateLaborRateResponse {
+  data: LaborRate;
+  message: string;
+  status: number;
+}
+
+/**
+ * Get Labor Rates Response
+ */
+export interface GetLaborRatesResponse {
+  data: LaborRate[];
+  message: string;
+  status: number;
+}
+

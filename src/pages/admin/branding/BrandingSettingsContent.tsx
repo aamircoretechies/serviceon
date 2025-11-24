@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { Upload, X, Eye, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,22 +7,29 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { toast } from 'sonner';
+import { brandSettingsService } from '@/api/services';
+import { IMAGES_BASE_URL } from '@/api/config';
 
 const BrandingSettingsContent = () => {
   const [formData, setFormData] = useState({
     logo: null as File | null,
-    companyName: 'ServiceOn',
-    address: '123 Business St, City, State 12345',
-    phone: '(555) 123-4567',
-    email: 'info@serviceon.com',
-    website: 'www.serviceon.com',
-    footerText: 'Thank you for choosing our services',
-    showLogo: true,
-    showContact: true,
-    showFooter: true
+    companyName: '',
+    address: '',
+    phone: '',
+    email: '',
+    website: '',
+    footerText: '',
+    showLogo: false,
+    showContact: false,
+    showFooter: false
   });
 
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [existingLogoUrl, setExistingLogoUrl] = useState<string | null>(null);
+  const [logoLoadError, setLogoLoadError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({
@@ -53,17 +60,128 @@ const BrandingSettingsContent = () => {
       logo: null
     }));
     setLogoPreview(null);
+    setExistingLogoUrl(null);
+    setLogoLoadError(false);
   };
 
-  const handleSave = () => {
-    console.log('Saving branding settings:', formData);
-    // Implement save logic
+  /**
+   * Fetch brand settings on component mount
+   */
+  useEffect(() => {
+    const fetchBrandSettings = async () => {
+      setIsLoading(true);
+      try {
+        const data = await brandSettingsService.get();
+        
+        console.log('Brand settings data received:', data);
+        console.log('Logo value from API:', data.logo);
+        console.log('IMAGES_BASE_URL:', IMAGES_BASE_URL);
+        
+        // Map API response to form state
+        setFormData({
+          logo: null, // Don't set file from API response
+          companyName: data.company_name || '',
+          address: data.address || '',
+          phone: data.phone_number || '',
+          email: data.email || '',
+          website: data.website || '',
+          footerText: data.footer_text || '',
+          showLogo: data.show_logo_on_outputs === 1,
+          showContact: data.show_content_information === 1,
+          showFooter: data.show_custom_footer === 1
+        });
+
+        // Set existing logo URL if available
+        // Handle both string and null/undefined cases
+        const logoValue = data.logo;
+        console.log('Logo value type:', typeof logoValue, 'Value:', logoValue);
+        
+        if (logoValue && typeof logoValue === 'string' && logoValue.trim() !== '') {
+          const logoUrl = `${IMAGES_BASE_URL}/${logoValue}`;
+          console.log('Setting existing logo URL:', logoUrl);
+          setExistingLogoUrl(logoUrl);
+          setLogoLoadError(false); // Reset error state when setting new URL
+        } else {
+          console.log('No logo found in API response or logo is empty/null');
+          setExistingLogoUrl(null);
+          setLogoLoadError(false);
+        }
+      } catch (error: any) {
+        console.error('Failed to fetch brand settings:', error);
+        toast.error(error?.response?.data?.message || 'Failed to load brand settings');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchBrandSettings();
+  }, []);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Map form state to API request format
+      const requestData = {
+        logo: formData.logo,
+        show_logo_on_outputs: formData.showLogo ? 1 : 0,
+        company_name: formData.companyName,
+        phone_number: formData.phone,
+        address: formData.address,
+        email: formData.email,
+        website: formData.website,
+        show_content_information: formData.showContact ? 1 : 0,
+        show_custom_footer: formData.showFooter ? 1 : 0,
+        footer_text: formData.footerText,
+      };
+
+      await brandSettingsService.createOrUpdate(requestData);
+      
+      toast.success('Brand settings saved successfully');
+      
+      // Refresh data after save
+      const updatedData = await brandSettingsService.get();
+      setFormData(prev => ({
+        ...prev,
+        logo: null, // Reset file after save
+      }));
+      
+      // Update existing logo URL - always refresh from API
+      if (updatedData.logo && updatedData.logo.trim() !== '') {
+        const logoUrl = `${IMAGES_BASE_URL}/${updatedData.logo}`;
+        console.log('Updating existing logo URL after save:', logoUrl);
+        setExistingLogoUrl(logoUrl);
+        setLogoLoadError(false);
+      } else {
+        // Only clear if we explicitly removed the logo
+        // If no logo was uploaded, keep the existing one
+        if (formData.logo === null && !existingLogoUrl) {
+          setExistingLogoUrl(null);
+        }
+      }
+      
+      setLogoPreview(null); // Clear preview after save
+    } catch (error: any) {
+      console.error('Failed to save brand settings:', error);
+      toast.error(error?.response?.data?.message || 'Failed to save brand settings');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handlePreview = () => {
     console.log('Preview branding');
     // Implement preview logic
   };
+
+  if (isLoading) {
+    return (
+      <Fragment>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-gray-500">Loading brand settings...</div>
+        </div>
+      </Fragment>
+    );
+  }
 
   return (
     <Fragment>
@@ -75,12 +193,12 @@ const BrandingSettingsContent = () => {
             <p className="text-gray-600 dark:text-gray-400">Configure your garage branding for intake forms and outputs</p>
           </div>
           <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handlePreview} className="flex items-center gap-2 sand-hover-button">
+          <Button variant="outline" onClick={handlePreview} className="flex items-center gap-2 sand-hover-button" disabled={isLoading || isSaving}>
             <Eye className="h-4 w-4" />
             Preview
           </Button>
-          <Button onClick={handleSave} className="sand-hover-button">
-            Save Changes
+          <Button onClick={handleSave} className="sand-hover-button" disabled={isLoading || isSaving}>
+            {isSaving ? 'Saving...' : 'Save Changes'}
           </Button>
           </div>
         </div>
@@ -107,6 +225,12 @@ const BrandingSettingsContent = () => {
 
                 <div className="space-y-4">
                   <Label>Upload Logo</Label>
+                  {/* Debug info - remove after testing */}
+                  {/* {existingLogoUrl && (
+                    <div className="text-xs text-gray-500 p-2 bg-gray-100 dark:bg-gray-800 rounded">
+                      Debug: existingLogoUrl = {existingLogoUrl}
+                    </div>
+                  )} */}
                   {logoPreview ? (
                     <div className="relative">
                       <img
@@ -114,6 +238,42 @@ const BrandingSettingsContent = () => {
                         alt="Logo preview"
                         className="w-32 h-32 object-contain border rounded-lg"
                       />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2"
+                        onClick={removeLogo}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : existingLogoUrl ? (
+                    <div className="relative">
+                      {!logoLoadError ? (
+                        <img
+                          src={existingLogoUrl}
+                          alt="Company logo"
+                          className="w-32 h-32 object-contain border rounded-lg bg-gray-50 dark:bg-gray-800"
+                          onError={(e) => {
+                            console.error('Failed to load logo image:', existingLogoUrl);
+                            setLogoLoadError(true);
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                          onLoad={() => {
+                            console.log('Logo image loaded successfully:', existingLogoUrl);
+                            setLogoLoadError(false);
+                          }}
+                        />
+                      ) : (
+                        <div className="w-32 h-32 border rounded-lg bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+                          <div className="text-center p-2">
+                            <Upload className="h-6 w-6 mx-auto text-gray-400 mb-1" />
+                            <p className="text-xs text-gray-500">Logo exists but failed to load</p>
+                            <p className="text-xs text-gray-400 mt-1 break-all">{existingLogoUrl}</p>
+                          </div>
+                        </div>
+                      )}
                       <Button
                         type="button"
                         variant="destructive"
@@ -274,15 +434,15 @@ const BrandingSettingsContent = () => {
                 <div className="border rounded-lg p-4 bg-white dark:bg-gray-900">
                   {/* Header */}
                   <div className="flex items-center gap-3 mb-4 pb-4 border-b">
-                    {formData.showLogo && logoPreview && (
+                    {formData.showLogo && (logoPreview || existingLogoUrl) && (
                       <img
-                        src={logoPreview}
+                        src={logoPreview || existingLogoUrl || ''}
                         alt="Logo"
                         className="h-8 w-8 object-contain"
                       />
                     )}
                     <div>
-                      <div className="font-bold text-sm">{formData.companyName}</div>
+                      <div className="font-bold text-sm">{formData.companyName || 'Company Name'}</div>
                       <div className="text-xs text-gray-500">Service Intake Form</div>
                     </div>
                   </div>

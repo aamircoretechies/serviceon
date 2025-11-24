@@ -12,6 +12,7 @@ import {
   BrandingOutputPage,
   ChecklistConfigPage,
   LaborRatesPage,
+  LaborRatesListPage,
   UsersListPage,
   CreateUserPage,
   ActivityLogPage,
@@ -235,6 +236,7 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/admin/branding/output" element={<BrandingOutputPage />} />
           <Route path="/admin/checklist" element={<ChecklistConfigPage />} />
           <Route path="/admin/labor-rates" element={<LaborRatesPage />} />
+          <Route path="/admin/labor-rates/list" element={<LaborRatesListPage />} />
           <Route path="/admin/users" element={<UsersListPage />} />
           <Route path="/admin/users/create" element={<CreateUserPage />} />
           <Route path="/admin/activity" element={<ActivityLogPage />} />

@@ -79,6 +79,29 @@ export const JOB_ENDPOINTS = {
 } as const;
 
 /**
+ * Brand Settings Endpoints
+ */
+export const BRAND_SETTINGS_ENDPOINTS = {
+  GET: `${API_URL}/brand-settings/get`,
+  CREATE_OR_UPDATE: `${API_URL}/brand-settings/create-or-update`,
+} as const;
+
+/**
+ * Labor Category Endpoints
+ */
+export const LABOR_CATEGORY_ENDPOINTS = {
+  GET_ALL: `${API_URL}/labor-category/get-all`,
+} as const;
+
+/**
+ * Labor Rates Endpoints
+ */
+export const LABOR_RATES_ENDPOINTS = {
+  CREATE: `${API_URL}/labor-rates/create`,
+  GET_ALL: `${API_URL}/labor-rates/get-all`,
+} as const;
+
+/**
  * Export all endpoints for easy access
  * Additional endpoints will be added here as we integrate features
  */
@@ -90,6 +113,9 @@ export const API_ENDPOINTS = {
   JOB_TYPE: JOB_TYPE_ENDPOINTS,
   SERVICE_TYPE: SERVICE_TYPE_ENDPOINTS,
   JOB: JOB_ENDPOINTS,
+  BRAND_SETTINGS: BRAND_SETTINGS_ENDPOINTS,
+  LABOR_CATEGORY: LABOR_CATEGORY_ENDPOINTS,
+  LABOR_RATES: LABOR_RATES_ENDPOINTS,
   // Additional endpoints will be added here incrementally
 } as const;
 
