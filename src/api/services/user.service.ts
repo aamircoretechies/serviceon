@@ -13,6 +13,11 @@ import type {
   GetUsersResponse,
   UpdateUserProfileRequest,
   UpdateUserProfileResponse,
+  GetUserProfileRequest,
+  GetUserProfileResponse,
+  ResetPasswordOldRequest,
+  ResetPasswordOldResponse,
+  LogoutResponse,
   ToggleUserStatusRequest,
   ToggleUserStatusResponse,
   DeleteUserAccountRequest,
@@ -103,34 +108,82 @@ class UserService {
   }
 
   /**
+   * Get user profile
+   * Bearer token required
+   * POST request with user_id
+   */
+  async getProfile(data: GetUserProfileRequest): Promise<GetUserProfileResponse> {
+    // Create FormData for multipart/form-data request
+    const formData = new FormData();
+    formData.append('user_id', data.user_id.toString());
+
+    const response = await apiClient.post<GetUserProfileResponse>(
+      USER_ENDPOINTS.GET_PROFILE,
+      formData
+    );
+    return response.data;
+  }
+
+  /**
    * Update user profile
    * Bearer token required
    * Uses form-data format for file upload support
+   * All fields are required by the API
    */
   async updateProfile(data: UpdateUserProfileRequest): Promise<UpdateUserProfileResponse> {
     // Create FormData for multipart/form-data request
     const formData = new FormData();
     
+    // Always send user_id (required)
     formData.append('user_id', data.user_id.toString());
     
-    if (data.first_name !== undefined) {
-      formData.append('first_name', data.first_name);
-    }
-    if (data.last_name !== undefined) {
-      formData.append('last_name', data.last_name);
-    }
-    if (data.mobile_number !== undefined) {
-      formData.append('mobile_number', data.mobile_number);
-    }
-    if (data.address1 !== undefined) {
-      formData.append('address1', data.address1);
-    }
+    // Always send first_name (required) - send empty string if not provided
+    formData.append('first_name', data.first_name !== undefined ? data.first_name : '');
+    
+    // Always send last_name (required) - send empty string if not provided
+    formData.append('last_name', data.last_name !== undefined ? data.last_name : '');
+    
+    // Always send mobile_number (required) - send empty string if not provided
+    formData.append('mobile_number', data.mobile_number !== undefined ? data.mobile_number : '');
+    
+    // Always send address1 (required) - send empty string if not provided
+    formData.append('address1', data.address1 !== undefined ? data.address1 : '');
+    
+    // Only append profile_image if provided (optional)
     if (data.profile_image) {
       formData.append('profile_image', data.profile_image);
     }
 
+    // Debug: Log FormData contents
+    console.log('Update Profile FormData:');
+    console.log('user_id:', data.user_id);
+    console.log('first_name:', data.first_name || '');
+    console.log('last_name:', data.last_name || '');
+    console.log('mobile_number:', data.mobile_number || '');
+    console.log('address1:', data.address1 || '');
+    console.log('profile_image:', data.profile_image ? 'File provided' : 'No file');
+
     const response = await apiClient.post<UpdateUserProfileResponse>(
       USER_ENDPOINTS.UPDATE_PROFILE,
+      formData
+    );
+    return response.data;
+  }
+
+  /**
+   * Reset password with old password
+   * Bearer token required
+   * Uses form-data format
+   */
+  async resetPasswordOld(data: ResetPasswordOldRequest): Promise<ResetPasswordOldResponse> {
+    // Create FormData for multipart/form-data request
+    const formData = new FormData();
+    
+    formData.append('old_password', data.old_password);
+    formData.append('new_password', data.new_password);
+
+    const response = await apiClient.post<ResetPasswordOldResponse>(
+      USER_ENDPOINTS.RESET_PASSWORD_OLD,
       formData
     );
     return response.data;
@@ -151,6 +204,19 @@ class UserService {
     const response = await apiClient.post<ToggleUserStatusResponse>(
       USER_ENDPOINTS.TOGGLE_USER_STATUS,
       formData
+    );
+    return response.data;
+  }
+
+  /**
+   * Logout user
+   * Bearer token required
+   * POST request with no data
+   */
+  async logout(): Promise<LogoutResponse> {
+    const response = await apiClient.post<LogoutResponse>(
+      USER_ENDPOINTS.LOGOUT,
+      {}
     );
     return response.data;
   }

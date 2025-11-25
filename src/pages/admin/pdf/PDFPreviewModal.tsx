@@ -27,7 +27,7 @@ interface PDFPreviewModalProps {
     headerTitle: string;
     footerText: string;
     logo: File | null;
-    signaturePlacement: string;
+    signaturePlacement: number;
     applyToAllGarages: boolean;
     version: string;
   };
@@ -148,7 +148,7 @@ const PDFPreviewModal = ({ open, onOpenChange, config }: PDFPreviewModalProps) =
               <div className="flex items-center gap-4">
                 <span>Template: {config.headerTitle}</span>
                 <span>•</span>
-                <span>Signature: {config.signaturePlacement}</span>
+                <span>Signature: {config.signaturePlacement === 1 ? 'Top Right' : config.signaturePlacement === 2 ? 'Bottom Left' : config.signaturePlacement === 3 ? 'Bottom Center' : 'Bottom Right'}</span>
                 <span>•</span>
                 <span>Version: v{config.version}</span>
               </div>

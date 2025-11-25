@@ -27,12 +27,7 @@ const AccountUserProfilePage = () => {
               <ToolbarDescription>Central Hub for Personal Customization</ToolbarDescription>
             </ToolbarHeading>
             <ToolbarActions>
-              <a href="#" className="btn btn-sm btn-light">
-                Public Profile
-              </a>
-              <a href="#" className="btn btn-sm btn-primary">
-                Account Settings
-              </a>
+              {/* Buttons removed as per requirements */}
             </ToolbarActions>
           </Toolbar>
         </Container>

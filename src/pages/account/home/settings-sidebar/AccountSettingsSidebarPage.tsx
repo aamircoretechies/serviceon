@@ -27,9 +27,6 @@ const AccountSettingsSidebarPage = () => {
               <ToolbarDescription>Intuitive Access to In-Depth Customization</ToolbarDescription>
             </ToolbarHeading>
             <ToolbarActions>
-              <a href="#" className="btn btn-sm btn-light">
-                Public Profile
-              </a>
               <a href="#" className="btn btn-sm btn-primary">
                 Get Started
               </a>

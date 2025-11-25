@@ -47,6 +47,9 @@ export const USER_ENDPOINTS = {
   DIRECT_REGISTRATION: `${API_URL}/users/direct-registration`,
   GET_ALL: `${API_URL}/users/get-all`,
   UPDATE_PROFILE: `${API_URL}/users/update-profile`,
+  GET_PROFILE: `${API_URL}/users/profile`,
+  RESET_PASSWORD_OLD: `${API_URL}/users/reset-password-old`,
+  LOGOUT: `${API_URL}/users/logout`,
   TOGGLE_USER_STATUS: `${API_URL}/users/toggle-user-status`,
   DELETE_ACCOUNT: `${API_URL}/users/delete-account`,
 } as const;
@@ -123,6 +126,14 @@ export const VEHICLE_HISTORY_ENDPOINTS = {
 } as const;
 
 /**
+ * PDF Configuration Endpoints
+ */
+export const PDF_CONFIGURATION_ENDPOINTS = {
+  GET: `${API_URL}/pdf-configuration/get`,
+  CREATE_OR_UPDATE: `${API_URL}/pdf-configuration/create-or-update`,
+} as const;
+
+/**
  * Export all endpoints for easy access
  * Additional endpoints will be added here as we integrate features
  */
@@ -139,6 +150,7 @@ export const API_ENDPOINTS = {
   LABOR_RATES: LABOR_RATES_ENDPOINTS,
   INTAKE_CHECKLIST: INTAKE_CHECKLIST_ENDPOINTS,
   VEHICLE_HISTORY: VEHICLE_HISTORY_ENDPOINTS,
+  PDF_CONFIGURATION: PDF_CONFIGURATION_ENDPOINTS,
   // Additional endpoints will be added here incrementally
 } as const;
 

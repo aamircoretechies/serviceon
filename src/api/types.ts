@@ -436,6 +436,46 @@ export interface UpdateUserProfileResponse {
 }
 
 /**
+ * Get User Profile Request
+ */
+export interface GetUserProfileRequest {
+  user_id: number;
+}
+
+/**
+ * Get User Profile Response
+ */
+export interface GetUserProfileResponse {
+  data: User;
+  message: string;
+  status: number;
+}
+
+/**
+ * Reset Password Old Request
+ */
+export interface ResetPasswordOldRequest {
+  old_password: string;
+  new_password: string;
+}
+
+/**
+ * Reset Password Old Response
+ */
+export interface ResetPasswordOldResponse {
+  message: string;
+  status: number;
+}
+
+/**
+ * Logout Response
+ */
+export interface LogoutResponse {
+  message: string;
+  status: number;
+}
+
+/**
  * Toggle User Status Request
  */
 export interface ToggleUserStatusRequest {
@@ -1084,6 +1124,49 @@ export interface DeleteVehicleHistoryRequest {
  * Delete Vehicle History Response
  */
 export interface DeleteVehicleHistoryResponse {
+  message: string;
+  status: number;
+}
+
+/**
+ * PDF Configuration Data
+ */
+export interface PdfConfigurationData {
+  id: number;
+  header_title: string;
+  footer_text: string;
+  logo: string | null;
+  signature_placement: number;
+  apply_on_all_garages: number;
+  created: string;
+  updated: string;
+}
+
+/**
+ * Get PDF Configuration Response
+ */
+export interface GetPdfConfigurationResponse {
+  data: PdfConfigurationData;
+  message: string;
+  status: number;
+}
+
+/**
+ * Create or Update PDF Configuration Request
+ */
+export interface CreateOrUpdatePdfConfigurationRequest {
+  header_title?: string;
+  footer_text?: string;
+  logo?: File | null;
+  signature_placement?: number;
+  apply_on_all_garages?: number;
+}
+
+/**
+ * Create or Update PDF Configuration Response
+ */
+export interface CreateOrUpdatePdfConfigurationResponse {
+  data: PdfConfigurationData;
   message: string;
   status: number;
 }
