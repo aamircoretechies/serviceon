@@ -16,6 +16,8 @@ export const AUTH_ENDPOINTS = {
   LOGOUT: `${API_URL}/logout`,
   FORGOT_PASSWORD: `${API_URL}/forgot-password`,
   RESET_PASSWORD: `${API_URL}/reset-password`,
+  RESET_PASSWORD_REQUEST: `${API_URL}/users/reset-password-request`,
+  RESET_PASSWORD_OTP: `${API_URL}/users/reset-password-otp`,
   REFRESH_TOKEN: `${API_URL}/refresh-token`,
   VERIFY_EMAIL: `${API_URL}/verify-email`,
   GET_USER: `${API_URL}/dashboard/get`,

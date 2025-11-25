@@ -75,8 +75,12 @@ const Login = () => {
         }
 
         navigate(from, { replace: true });
-      } catch {
-        setStatus('The login details are incorrect');
+      } catch (error: any) {
+        // Extract error message from error object
+        // The JWTProvider throws an Error with the API message in error.message
+        // Also check for direct API response errors
+        const errorMessage = error?.message || error?.response?.data?.message || 'The login details are incorrect';
+        setStatus(errorMessage);
         setSubmitting(false);
       }
       setLoading(false);

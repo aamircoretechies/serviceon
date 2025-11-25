@@ -116,6 +116,38 @@ export interface ChangePasswordRequest {
 }
 
 /**
+ * Reset Password Request (Request OTP)
+ */
+export interface ResetPasswordRequestRequest {
+  email: string;
+}
+
+/**
+ * Reset Password Request Response
+ */
+export interface ResetPasswordRequestResponse {
+  message: string;
+  status: number;
+}
+
+/**
+ * Reset Password OTP Request
+ */
+export interface ResetPasswordOtpRequest {
+  email: string;
+  otp: string;
+  new_password: string;
+}
+
+/**
+ * Reset Password OTP Response
+ */
+export interface ResetPasswordOtpResponse {
+  message: string;
+  status: number;
+}
+
+/**
  * Generic CRUD Types
  */
 export interface CreateRequest<T = any> {

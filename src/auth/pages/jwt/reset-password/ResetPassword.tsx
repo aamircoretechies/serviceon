@@ -5,10 +5,10 @@ import { Link } from 'react-router-dom';
 import * as Yup from 'yup';
 import { useNavigate } from 'react-router-dom';
 
-import { useAuthContext } from '@/auth/useAuthContext';
 import { Alert, KeenIcon } from '@/components';
 import { useLayout } from '@/providers';
-import { AxiosError } from 'axios';
+import { authService } from '@/api/services/auth.service';
+import { toast } from 'sonner';
 
 const initialValues = {
   email: ''
@@ -25,7 +25,6 @@ const forgotPasswordSchema = Yup.object().shape({
 const ResetPassword = () => {
   const [loading, setLoading] = useState(false);
   const [hasErrors, setHasErrors] = useState<boolean | undefined>(undefined);
-  const { requestPasswordResetLink } = useAuthContext();
   const { currentLayout } = useLayout();
   const navigate = useNavigate();
 
@@ -36,33 +35,41 @@ const ResetPassword = () => {
       setLoading(true);
       setHasErrors(undefined);
       try {
-        if (!requestPasswordResetLink) {
-          throw new Error('JWTProvider is required for this form.');
-        }
-        await requestPasswordResetLink(values.email);
-        setHasErrors(false);
-        setLoading(false);
-        const params = new URLSearchParams();
-        params.append('email', values.email);
-        navigate({
-          pathname:
-            currentLayout?.name === 'auth-branded'
-              ? '/auth/reset-password/check-email'
-              : '/auth/classic/reset-password/check-email',
-          search: params.toString()
-        });
-      } catch (error) {
-        if (error instanceof AxiosError && error.response) {
-          setStatus(error.response.data.message);
+        const response = await authService.resetPasswordRequest({ email: values.email });
+        
+        if (response.status === 1) {
+          // Success - navigate to OTP screen
+          toast.success(response.message || 'OTP sent successfully to your email address.');
+          setHasErrors(false);
+          
+          // Navigate to OTP screen with email in query params
+          const params = new URLSearchParams();
+          params.append('email', values.email);
+          navigate({
+            pathname:
+              currentLayout?.name === 'auth-branded'
+                ? '/auth/reset-password/otp'
+                : '/auth/classic/reset-password/otp',
+            search: params.toString()
+          });
         } else {
-          setStatus('Password reset failed. Please try again.');
+          // Status 0 - show error message
+          setStatus(response.message || 'Please wait 10 minutes before requesting another password reset email.');
+          setHasErrors(true);
+          toast.error(response.message || 'Please wait 10 minutes before requesting another password reset email.');
         }
+      } catch (error: any) {
+        const errorMessage = error?.response?.data?.message || error?.message || 'Failed to send OTP. Please try again.';
+        setStatus(errorMessage);
         setHasErrors(true);
+        toast.error(errorMessage);
+      } finally {
         setLoading(false);
         setSubmitting(false);
       }
     }
   });
+  
   return (
     <div className="card max-w-[370px] w-full">
       <form
@@ -77,11 +84,13 @@ const ResetPassword = () => {
           </span>
         </div>
 
-        {hasErrors && <Alert variant="danger">{formik.status}</Alert>}
+        {hasErrors && formik.status && (
+          <Alert variant="danger">{formik.status}</Alert>
+        )}
 
         {hasErrors === false && (
           <Alert variant="success">
-            Password reset link sent. Please check your email to proceed
+            OTP sent successfully. Please check your email.
           </Alert>
         )}
 

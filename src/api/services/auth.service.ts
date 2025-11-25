@@ -12,6 +12,10 @@ import type {
   RegisterRequest,
   ForgotPasswordRequest,
   ResetPasswordRequest,
+  ResetPasswordRequestRequest,
+  ResetPasswordRequestResponse,
+  ResetPasswordOtpRequest,
+  ResetPasswordOtpResponse,
   ChangePasswordRequest,
   ApiResponse,
 } from '../types';
@@ -79,6 +83,62 @@ class AuthService {
    */
   async resetPassword(data: ResetPasswordRequest): Promise<void> {
     await apiClient.post(AUTH_ENDPOINTS.RESET_PASSWORD, data);
+  }
+
+  /**
+   * Request password reset OTP
+   * Bearer token not required
+   * POST request with email
+   */
+  async resetPasswordRequest(data: ResetPasswordRequestRequest): Promise<ResetPasswordRequestResponse> {
+    // Use axios directly without the apiClient to avoid auth interceptor
+    const axios = (await import('axios')).default;
+    const { AUTH_ENDPOINTS } = await import('../endpoints');
+
+    // Convert to URL-encoded form data
+    const formData = new URLSearchParams();
+    formData.append('email', data.email);
+
+    const response = await axios.post<ResetPasswordRequestResponse>(
+      AUTH_ENDPOINTS.RESET_PASSWORD_REQUEST,
+      formData.toString(),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Accept: 'application/json',
+        },
+      }
+    );
+    return response.data;
+  }
+
+  /**
+   * Reset password with OTP
+   * Bearer token not required
+   * POST request with email, otp, and new_password
+   */
+  async resetPasswordOtp(data: ResetPasswordOtpRequest): Promise<ResetPasswordOtpResponse> {
+    // Use axios directly without the apiClient to avoid auth interceptor
+    const axios = (await import('axios')).default;
+    const { AUTH_ENDPOINTS } = await import('../endpoints');
+
+    // Convert to URL-encoded form data
+    const formData = new URLSearchParams();
+    formData.append('email', data.email);
+    formData.append('otp', data.otp);
+    formData.append('new_password', data.new_password);
+
+    const response = await axios.post<ResetPasswordOtpResponse>(
+      AUTH_ENDPOINTS.RESET_PASSWORD_OTP,
+      formData.toString(),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Accept: 'application/json',
+        },
+      }
+    );
+    return response.data;
   }
 
   /**
