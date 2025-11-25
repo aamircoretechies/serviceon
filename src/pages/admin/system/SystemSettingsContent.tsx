@@ -202,15 +202,15 @@ const SystemSettingsContent = () => {
             setActiveTab(newValue as string);
           }
         }}>
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-1">
             <Tab value="integrations" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               API Keys & Integrations
             </Tab>
-            <Tab value="logs" className="flex items-center gap-2">
+            {/* <Tab value="logs" className="flex items-center gap-2">
               <Activity className="h-4 w-4" />
               System Logs
-            </Tab>
+            </Tab> */}
           </TabsList>
 
           <TabPanel value="integrations" className="space-y-6">
@@ -377,9 +377,10 @@ const SystemSettingsContent = () => {
             </Card>
           </TabPanel>
 
-          <TabPanel value="logs" className="space-y-6">
+          {/* System Logs Tab - Commented out for now */}
+          {/* <TabPanel value="logs" className="space-y-6">
             <SystemLogsContent />
-          </TabPanel>
+          </TabPanel> */}
         </Tabs>
       </div>
     </Fragment>

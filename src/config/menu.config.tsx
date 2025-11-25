@@ -77,52 +77,52 @@ export const MENU_SIDEBAR: TMenuConfig = [
   {
     heading: 'System'
   },
-  {
-    title: 'Reminders & Notifications',
-    icon: 'notification',
-    children: [
-      {
-        title: 'Templates',
-        icon: 'document',
-        path: '/admin/reminders/templates'
-      },
-      {
-        title: 'Create Template',
-        icon: 'plus',
-        path: '/admin/reminders/templates/create'
-      },
-      {
-        title: 'Scheduled Reminders',
-        icon: 'calendar',
-        path: '/admin/reminders/scheduled'
-      }
-    ]
-  },
+  // {
+  //   title: 'Reminders & Notifications',
+  //   icon: 'notification',
+  //   children: [
+  //     {
+  //       title: 'Templates',
+  //       icon: 'document',
+  //       path: '/admin/reminders/templates'
+  //     },
+  //     {
+  //       title: 'Create Template',
+  //       icon: 'plus',
+  //       path: '/admin/reminders/templates/create'
+  //     },
+  //     {
+  //       title: 'Scheduled Reminders',
+  //       icon: 'calendar',
+  //       path: '/admin/reminders/scheduled'
+  //     }
+  //   ]
+  // },
   {
     title: 'Vehicle History',
     icon: 'car',
     path: '/admin/vehicles'
   },
-  {
-    title: 'Media Management',
-    icon: 'picture',
-    path: '/admin/media'
-  },
+  // {
+  //   title: 'Media Management',
+  //   icon: 'picture',
+  //   path: '/admin/media'
+  // },
   {
     title: 'PDF Configuration',
     icon: 'files',
     path: '/admin/pdf-config'
   },
-  {
-    title: 'System Settings',
-    icon: 'setting-2',
-    path: '/admin/system'
-  },
-  {
-    title: 'Activity Log',
-    icon: 'notification',
-    path: '/admin/activity'
-  },
+  // {
+  //   title: 'System Settings',
+  //   icon: 'setting-2',
+  //   path: '/admin/system'
+  // },
+  // {
+  //   title: 'Activity Log',
+  //   icon: 'notification',
+  //   path: '/admin/activity'
+  // },
   /* {
     title: 'Settings',
     icon: 'setting-2',
@@ -1217,8 +1217,8 @@ export const MENU_MEGA: TMenuConfig = [
           { title: 'Reminders - Create', icon: 'plus', path: '/admin/reminders/templates/create' },
           { title: 'Scheduled Reminders', icon: 'calendar', path: '/admin/reminders/scheduled' },
           { title: 'Vehicle History', icon: 'car', path: '/admin/vehicles' },
-          { title: 'Media Management', icon: 'image', path: '/admin/media' },
-          { title: 'Activity Log', icon: 'activity', path: '/admin/activity' }
+          // { title: 'Media Management', icon: 'image', path: '/admin/media' },
+          // { title: 'Activity Log', icon: 'activity', path: '/admin/activity' }
         ]
       }
     ]

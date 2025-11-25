@@ -932,3 +932,159 @@ export interface SetArrangeOrderResponse {
   status: number;
 }
 
+/**
+ * Vehicle History Item
+ */
+export interface VehicleHistoryItem {
+  vehicle_history_id: number;
+  vehicle_id?: number | null;
+  vehicle_number?: string | null;
+  vin_number?: string | null;
+  make_model?: string | null;
+  make_year?: string | null;
+  vehicle_color?: string | null;
+  vehicle_mileage?: string | null;
+  user_id: number;
+  status: number;
+  total_jobs: number;
+  total_notest: number;
+  last_service?: string | null;
+  next_service_schedule?: string | null;
+  job_summary?: string | null;
+  admin_notes?: string | null;
+  created: string;
+  updated?: string | null;
+  vehicle_photos?: string | null;
+}
+
+/**
+ * Create Vehicle History Request
+ */
+export interface CreateVehicleHistoryRequest {
+  vehicle_id?: number;
+  vehicle_number?: string;
+  vin_number?: string;
+  make_model?: string;
+  make_year?: string;
+  vehicle_color?: string;
+  vehicle_mileage?: string;
+  user_id: number;
+  status?: number;
+  total_jobs?: number;
+  total_notest?: number;
+  last_service?: string;
+  next_service_schedule?: string;
+  job_summary?: string;
+  admin_notes?: string;
+  vehicle_photos?: File[];
+}
+
+/**
+ * Create Vehicle History Response
+ */
+export interface CreateVehicleHistoryResponse {
+  data: VehicleHistoryItem;
+  message: string;
+  status: number;
+}
+
+/**
+ * Get Vehicle History Request
+ */
+export interface GetVehicleHistoryRequest {
+  page?: number;
+  size?: number;
+  vehicle_id?: number;
+  user_id?: number;
+  search?: string;
+  status?: number;
+}
+
+/**
+ * Paginated Vehicle History Content
+ */
+export interface PaginatedVehicleHistoryContent {
+  content: VehicleHistoryItem[];
+  pageable: {
+    pageNumber: number;
+    pageSize: number;
+    sort: {
+      sorted: boolean;
+      empty: boolean;
+      unsorted: boolean;
+    };
+    offset: number;
+    paged: boolean;
+    unpaged: boolean;
+  };
+  last: boolean;
+  totalPages: number;
+  totalElements: number;
+  first: boolean;
+  size: number;
+  number: number;
+  sort: {
+    sorted: boolean;
+    empty: boolean;
+    unsorted: boolean;
+  };
+  numberOfElements: number;
+  empty: boolean;
+}
+
+/**
+ * Get Vehicle History Response
+ */
+export interface GetVehicleHistoryResponse {
+  data: PaginatedVehicleHistoryContent;
+  message: string;
+  status: number;
+}
+
+/**
+ * Update Vehicle History Request
+ */
+export interface UpdateVehicleHistoryRequest {
+  vehicle_history_id: number;
+  vehicle_id?: number;
+  vehicle_number?: string;
+  vin_number?: string;
+  make_model?: string;
+  make_year?: string;
+  vehicle_color?: string;
+  vehicle_mileage?: string;
+  user_id?: number;
+  status?: number;
+  total_jobs?: number;
+  total_notest?: number;
+  last_service?: string;
+  next_service_schedule?: string;
+  job_summary?: string;
+  admin_notes?: string;
+  vehicle_photos?: File[];
+}
+
+/**
+ * Update Vehicle History Response
+ */
+export interface UpdateVehicleHistoryResponse {
+  data: VehicleHistoryItem;
+  message: string;
+  status: number;
+}
+
+/**
+ * Delete Vehicle History Request
+ */
+export interface DeleteVehicleHistoryRequest {
+  vehicle_history_id: number;
+}
+
+/**
+ * Delete Vehicle History Response
+ */
+export interface DeleteVehicleHistoryResponse {
+  message: string;
+  status: number;
+}
+

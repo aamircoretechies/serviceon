@@ -25,7 +25,8 @@ import {
 } from '@/pages/admin/reminders';
 import { 
   VehicleHistoryPage,
-  VehicleDetailPage
+  VehicleDetailPage,
+  AddVehiclePage
 } from '@/pages/admin/vehicles';
 import { 
   MediaLibraryPage
@@ -244,6 +245,7 @@ const AppRoutingSetup = (): ReactElement => {
           <Route path="/admin/reminders/templates/create" element={<CreateReminderTemplatePage />} />
           <Route path="/admin/reminders/scheduled" element={<ScheduledRemindersPage />} />
           <Route path="/admin/vehicles" element={<VehicleHistoryPage />} />
+          <Route path="/admin/vehicles/create" element={<AddVehiclePage />} />
           <Route path="/admin/vehicles/:id" element={<VehicleDetailPage />} />
           <Route path="/admin/media" element={<MediaLibraryPage />} />
           <Route path="/admin/pdf-config" element={<PDFConfigurationPage />} />

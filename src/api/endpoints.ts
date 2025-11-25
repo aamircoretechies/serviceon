@@ -113,6 +113,16 @@ export const INTAKE_CHECKLIST_ENDPOINTS = {
 } as const;
 
 /**
+ * Vehicle History Endpoints
+ */
+export const VEHICLE_HISTORY_ENDPOINTS = {
+  CREATE: `${API_URL}/vehicle-history/create`,
+  GET_ALL: `${API_URL}/vehicle-history/get-all`,
+  UPDATE: `${API_URL}/vehicle-history/update`,
+  DELETE: `${API_URL}/vehicle-history/delete`,
+} as const;
+
+/**
  * Export all endpoints for easy access
  * Additional endpoints will be added here as we integrate features
  */
@@ -128,6 +138,7 @@ export const API_ENDPOINTS = {
   LABOR_CATEGORY: LABOR_CATEGORY_ENDPOINTS,
   LABOR_RATES: LABOR_RATES_ENDPOINTS,
   INTAKE_CHECKLIST: INTAKE_CHECKLIST_ENDPOINTS,
+  VEHICLE_HISTORY: VEHICLE_HISTORY_ENDPOINTS,
   // Additional endpoints will be added here incrementally
 } as const;
 
